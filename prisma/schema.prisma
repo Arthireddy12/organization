@@ -1,0 +1,471 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  HR
+  EMPLOYEE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  SHORT_LEAVE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  WIDOWED
+  DIVORCED
+}
+
+enum PayrollStatus {
+  PENDING
+  COMPLETED
+}
+
+enum JobStatus {
+  ACTIVE
+  INACTIVE
+  COMPLETED
+}
+
+enum CandidateStatus {
+  SELECTED
+  IN_PROCESS
+  REJECTED
+}
+
+model User {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  email    String @unique
+  password String
+  role     Role   @default(EMPLOYEE)
+
+  organizationId String?       @db.ObjectId
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  resetOtpHash        String?
+  resetOtpExpiresAt   DateTime?
+  resetOtpRequestedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  employee                       Employee?              @relation("EmployeeOwner")
+  attendance                     Attendance[]
+  loginActivities                LoginActivity[]
+  settings                       Setting?
+  notifications                  Notification[]
+  departmentAdminAssignments     DepartmentAdmin[]
+  teamAdminAssignments           TeamAdmin[]
+  leaveApprovals                 LeaveRequest[]         @relation("LeaveRequestApprovedBy")
+  attendanceCorrectionsRequested AttendanceCorrection[] @relation("AttendanceCorrectionRequestedBy")
+  attendanceCorrectionsApproved  AttendanceCorrection[] @relation("AttendanceCorrectionApprovedBy")
+  auditLogs                      AuditLog[]             @relation("AuditLogUser")
+}
+
+model Organization {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String @unique
+  slug String? @unique
+
+  //a
+  planName           String?
+  userLimit          Int?
+  isActive           Boolean   @default(true)
+  startDate          DateTime? @db.Date
+  autoDeactivateDate DateTime? @db.Date
+  moduleAccess       String[]  @default([])
+  apiAccess          Boolean   @default(false)
+  customBranding     Boolean   @default(false)
+  payrollEnabled     Boolean   @default(true)
+  attendanceEnabled  Boolean   @default(true)
+  recruitmentEnabled Boolean   @default(false)
+  storageLimitGb     Int?
+  notes              String?
+
+  users       User[]
+  employees   Employee[]
+  departments Department[]
+  teams       Team[]
+  shifts      Shift[]
+  holidays    Holiday[]
+  attendance  Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Department {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  name         String   @unique
+  designations String[] @default([])
+
+  organizationId String?       @db.ObjectId
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  employees        Employee[]
+  teams            Team[]
+  adminAssignments DepartmentAdmin[]
+}
+
+model Team {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  name String
+
+  organizationId String?       @db.ObjectId
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  departmentId String     @db.ObjectId
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  employees        Employee[]
+  adminAssignments TeamAdmin[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([departmentId, name])
+}
+
+model Shift {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+
+  organizationId String?       @db.ObjectId
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  startTime String
+  endTime   String
+
+  bufferMins Int     @default(20)
+  isNight    Boolean @default(false)
+
+  employees  Employee[]
+  attendance Attendance[]
+}
+
+model Employee {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  employeeId    String?       @unique
+  firstName     String
+  lastName      String
+  mobile        String
+  avatar        String?       @map("image")
+  dob           DateTime
+  gender        Gender
+  maritalStatus MaritalStatus
+  nationality   String
+  address       String
+  city          String
+  state         String
+  zip           String
+
+  designation      String
+  joinDate         DateTime
+  salary           Float
+  geofenceRequired Boolean  @default(false)
+  documents        Json?
+
+  organizationId String?       @db.ObjectId
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  userId String @unique @db.ObjectId
+  user   User   @relation("EmployeeOwner", fields: [userId], references: [id])
+
+  managerId     String?    @db.ObjectId
+  manager       Employee?  @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  directReports Employee[] @relation("EmployeeManager")
+
+  departmentId String     @db.ObjectId
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  teamId String? @db.ObjectId
+  team   Team?   @relation(fields: [teamId], references: [id])
+
+  shiftId String? @db.ObjectId
+  shift   Shift?  @relation(fields: [shiftId], references: [id])
+
+  payrolls              Payroll[]
+  attendanceCorrections AttendanceCorrection[] @relation("EmployeeAttendanceCorrections")
+
+  createdAt DateTime @default(now())
+
+  @@map("employee")
+}
+
+model DepartmentAdmin {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  departmentId String @db.ObjectId
+  userId       String @db.ObjectId
+
+  department Department @relation(fields: [departmentId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  assignedAt DateTime @default(now())
+
+  @@unique([departmentId, userId])
+  @@map("department_admin")
+}
+
+model TeamAdmin {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  teamId String @db.ObjectId
+  userId String @db.ObjectId
+
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  assignedAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@map("team_admin")
+}
+
+model Attendance {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String?       @db.ObjectId
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+
+  shiftId String @db.ObjectId
+  shift   Shift  @relation(fields: [shiftId], references: [id])
+
+  date DateTime
+
+  checkIn  DateTime?
+  checkOut DateTime?
+
+  lateMins Int @default(0)
+  workMins Int @default(0)
+
+  isLate    Boolean @default(false)
+  isAutoOut Boolean @default(false)
+  ipAddress String?
+  area      String?
+  city      String?
+  state     String?
+  latitude  Float?
+  longitude Float?
+
+  status AttendanceStatus @default(PRESENT)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model Payroll {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  employeeId String   @db.ObjectId
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  month Int
+  year  Int
+
+  ctc       Float
+  salary    Float
+  deduction Float @default(0)
+
+  status PayrollStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+
+  @@unique([employeeId, month, year])
+}
+
+model Job {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  title      String
+  department String
+  location   String
+  salary     Float
+  type       String
+
+  status JobStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+}
+
+model Candidate {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  name        String
+  role        String
+  email       String
+  phone       String
+  appliedDate DateTime
+
+  status CandidateStatus @default(IN_PROCESS)
+
+  createdAt DateTime @default(now())
+}
+
+model Holiday {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  organizationId String?       @db.ObjectId
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  name String
+  date DateTime
+
+  createdAt DateTime @default(now())
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LeaveRequest {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  candidateName  String
+  candidateEmail String
+  candidatePhone String
+
+  fromDate DateTime
+  toDate   DateTime
+  reason   String
+  status   LeaveStatus @default(PENDING)
+
+  approvedById String?   @db.ObjectId
+  approvedBy   User?     @relation("LeaveRequestApprovedBy", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+  rejectedAt   DateTime?
+  decisionNote String?
+
+  createdAt DateTime @default(now())
+}
+
+model GeofencePolicy {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  singletonKey String  @unique @default("default")
+  enabled      Boolean @default(false)
+  locations    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("geofence_policy")
+}
+
+model AttendanceCorrection {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  employeeId String   @db.ObjectId
+  employee   Employee @relation("EmployeeAttendanceCorrections", fields: [employeeId], references: [id])
+
+  requestedById String @db.ObjectId
+  requestedBy   User   @relation("AttendanceCorrectionRequestedBy", fields: [requestedById], references: [id])
+
+  date     DateTime
+  checkIn  DateTime?
+  checkOut DateTime?
+  reason   String
+  status   CorrectionStatus @default(PENDING)
+
+  approvedById String?   @db.ObjectId
+  approvedBy   User?     @relation("AttendanceCorrectionApprovedBy", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+  rejectedAt   DateTime?
+  decisionNote String?
+
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  userId String? @db.ObjectId
+  user   User?   @relation("AuditLogUser", fields: [userId], references: [id])
+
+  action   String
+  entity   String
+  entityId String?
+  metadata Json?
+
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  userId String @unique @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+
+  appearance String @default("Light")
+  language   String @default("English")
+
+  twoFactor     Boolean @default(true)
+  mobilePush    Boolean @default(true)
+  desktopNotify Boolean @default(true)
+  emailNotify   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+
+  title   String
+  message String
+
+  type   String
+  avatar String?
+
+  isRead Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+model LoginActivity {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+
+  ipAddress String?
+  area      String?
+  city      String?
+  state     String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+}
