@@ -107,7 +107,7 @@ model Organization {
   shifts      Shift[]
   holidays    Holiday[]
   attendance  Attendance[]
-
+ 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
