@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { getSessionFromCookie } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { normalizeModuleAccessToObject } from "@/lib/organization";
 
 type UpdatePortalBody = {
   planName?: string;
   userLimit?: number;
-  moduleAccess?: string[];
+  moduleAccess?: string[] | Record<string, boolean>;
   isActive?: boolean;
   startDate?: string | null;
   autoDeactivateDate?: string | null;
@@ -54,8 +55,8 @@ export async function PATCH(
       updates.userLimit = Math.trunc(body.userLimit);
     }
 
-    if (Array.isArray(body.moduleAccess)) {
-      updates.moduleAccess = body.moduleAccess.filter(Boolean);
+    if (body.moduleAccess !== undefined) {
+      updates.moduleAccess = normalizeModuleAccessToObject(body.moduleAccess);
     }
 
     if (typeof body.isActive === "boolean") {

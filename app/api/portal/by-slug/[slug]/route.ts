@@ -1,0 +1,208 @@
+import { prisma } from "@/lib/prisma";
+import { getSessionFromCookie } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import {
+  normalizeModuleAccessToArray,
+  normalizeModuleAccessToObject,
+} from "@/lib/organization";
+
+type UpdateOrgBody = {
+  planName?: string;
+  userLimit?: number;
+  moduleAccess?: string[] | Record<string, boolean>;
+  isActive?: boolean;
+  startDate?: string | null;
+  autoDeactivateDate?: string | null;
+  storageLimitGb?: number | null;
+  notes?: string;
+};
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ slug: string }> },
+) {
+  try {
+    const session = await getSessionFromCookie();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { slug } = await context.params;
+
+    const organization = await prisma.organization.findUnique({
+      where: { slug },
+      include: {
+        _count: {
+          select: {
+            users: true,
+            departments: true,
+            employees: true,
+            teams: true,
+          },
+        },
+      },
+    });
+
+    if (!organization) {
+      return NextResponse.json(
+        { error: "Organization not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({
+      id: organization.id,
+      name: organization.name,
+      slug: organization.slug,
+      planName: organization.planName ?? "Starter",
+      userLimit: organization.userLimit ?? 25,
+      isActive: organization.isActive,
+      startDate: organization.startDate,
+      autoDeactivateDate: organization.autoDeactivateDate,
+      moduleAccess: normalizeModuleAccessToArray(organization.moduleAccess),
+      storageLimitGb: organization.storageLimitGb,
+      apiAccess: organization.apiAccess,
+      customBranding: organization.customBranding,
+      payrollEnabled: organization.payrollEnabled,
+      attendanceEnabled: organization.attendanceEnabled,
+      recruitmentEnabled: organization.recruitmentEnabled,
+      notes: organization.notes,
+      createdAt: organization.createdAt,
+      updatedAt: organization.updatedAt,
+      stats: {
+        users: organization._count.users,
+        departments: organization._count.departments,
+        employees: organization._count.employees,
+        teams: organization._count.teams,
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to fetch organization", details: String(error) },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ slug: string }> },
+) {
+  try {
+    const session = await getSessionFromCookie();
+    if (!session || session.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { slug } = await context.params;
+    const body = (await request.json()) as UpdateOrgBody;
+
+    const existing = await prisma.organization.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Organization not found" },
+        { status: 404 },
+      );
+    }
+
+    const updates: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    if (typeof body.planName === "string" && body.planName.trim()) {
+      updates.planName = body.planName.trim();
+    }
+    if (typeof body.userLimit === "number" && Number.isFinite(body.userLimit)) {
+      if (body.userLimit < 1) {
+        return NextResponse.json(
+          { error: "userLimit must be a positive number" },
+          { status: 400 },
+        );
+      }
+      updates.userLimit = Math.trunc(body.userLimit);
+    }
+    if (body.moduleAccess !== undefined) {
+      updates.moduleAccess = normalizeModuleAccessToObject(body.moduleAccess);
+    }
+    if (typeof body.isActive === "boolean") {
+      updates.isActive = body.isActive;
+    }
+    if (body.startDate === null) {
+      updates.startDate = null;
+    } else if (typeof body.startDate === "string" && body.startDate) {
+      const parsed = new Date(body.startDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        updates.startDate = parsed;
+      }
+    }
+    if (body.autoDeactivateDate === null) {
+      updates.autoDeactivateDate = null;
+    } else if (typeof body.autoDeactivateDate === "string" && body.autoDeactivateDate) {
+      const parsed = new Date(body.autoDeactivateDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        updates.autoDeactivateDate = parsed;
+      }
+    }
+    if (body.storageLimitGb === null) {
+      updates.storageLimitGb = null;
+    } else if (typeof body.storageLimitGb === "number" && Number.isFinite(body.storageLimitGb)) {
+      updates.storageLimitGb = body.storageLimitGb;
+    }
+    if (typeof body.notes === "string") {
+      updates.notes = body.notes;
+    }
+
+    const updated = await prisma.organization.update({
+      where: { slug },
+      data: updates,
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to update organization", details: String(error) },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ slug: string }> },
+) {
+  try {
+    const session = await getSessionFromCookie();
+    if (!session || session.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { slug } = await context.params;
+
+    const existing = await prisma.organization.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Organization not found" },
+        { status: 404 },
+      );
+    }
+
+    await prisma.organization.delete({
+      where: { slug },
+    });
+
+    return NextResponse.json({ message: "Organization deleted" });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to delete organization", details: String(error) },
+      { status: 500 },
+    );
+  }
+}

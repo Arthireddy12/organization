@@ -91,7 +91,7 @@ model Organization {
   isActive           Boolean   @default(true)
   startDate          DateTime? @db.Date
   autoDeactivateDate DateTime? @db.Date
-  moduleAccess       String[]  @default([])
+  moduleAccess       Json?
   apiAccess          Boolean   @default(false)
   customBranding     Boolean   @default(false)
   payrollEnabled     Boolean   @default(true)

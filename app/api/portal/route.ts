@@ -1,14 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { getSessionFromCookie } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { ensureOrganizationSlugs } from "@/lib/organization";
+import {
+  ensureOrganizationSlugs,
+  normalizeModuleAccessToArray,
+  normalizeModuleAccessToObject,
+} from "@/lib/organization";
 import { hash } from "bcryptjs";
 
 type CreateOrganizationBody = {
   organizationName?: string;
   planName?: string;
   userLimit?: number;
-  moduleAccess?: string[];
+  moduleAccess?: string[] | Record<string, boolean>;
   autoDeactivateDate?: string | null;
   superAdminName?: string;
   superAdminEmail?: string;
@@ -35,7 +39,7 @@ function mapOrgToPayload(org: {
   isActive: boolean;
   startDate: Date | null;
   autoDeactivateDate: Date | null;
-  moduleAccess: string[];
+  moduleAccess: unknown;
   storageLimitGb: number | null;
   apiAccess: boolean;
   customBranding: boolean;
@@ -54,7 +58,7 @@ function mapOrgToPayload(org: {
       id: org.id,
       planName: org.planName ?? "Starter",
       userLimit: org.userLimit ?? 25,
-      moduleAccess: org.moduleAccess ?? [],
+      moduleAccess: normalizeModuleAccessToArray(org.moduleAccess),
       isActive: org.isActive,
       startDate: org.startDate,
       autoDeactivateDate: org.autoDeactivateDate,
@@ -107,9 +111,7 @@ export async function POST(request: Request) {
     const organizationName = body.organizationName?.trim();
     const planName = body.planName?.trim() || "Starter";
     const userLimit = Number(body.userLimit ?? 25);
-    const moduleAccess = Array.isArray(body.moduleAccess)
-      ? body.moduleAccess.filter(Boolean)
-      : ["Attendance"];
+    const moduleAccess = normalizeModuleAccessToObject(body.moduleAccess ?? []);
     const superAdminName = body.superAdminName?.trim();
     const superAdminEmail = body.superAdminEmail?.trim().toLowerCase();
     const superAdminPassword = body.superAdminPassword ?? "";
