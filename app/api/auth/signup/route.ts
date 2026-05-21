@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAuthCookieName, signSessionToken } from "@/lib/auth";
+import { Role } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -17,7 +18,11 @@ export async function POST(request: Request) {
     const name = body.name?.trim();
     const email = body.email?.trim().toLowerCase();
     const password = body.password ?? "";
-    const role = body.role?.trim() || "SUPER_ADMIN";
+    const requestedRole = body.role?.trim();
+    const role =
+      requestedRole && Object.values(Role).includes(requestedRole as Role)
+        ? (requestedRole as Role)
+        : Role.SUPER_ADMIN;
 
     if (!name || !email || !password) {
       return NextResponse.json(

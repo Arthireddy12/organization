@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
+    <div className="relative min-h-screen overflow-hidden bg-white ">
       <div
         className="pointer-events-none absolute inset-0 opacity-50 dark:opacity-25"
         aria-hidden
@@ -27,13 +27,13 @@ export default function Home() {
             className="group rounded-2xl border border-slate-200/90 bg-white/90 p-7 shadow-lg shadow-slate-200/30 ring-1 ring-slate-200/50 transition hover:-translate-y-0.5 hover:border-teal-200/80 hover:shadow-xl hover:shadow-teal-500/10 dark:border-slate-700/90 dark:bg-slate-900/70 dark:ring-slate-800 dark:hover:border-teal-800/50"
           >
             <p className="text-lg font-semibold text-slate-900 dark:text-white">
-              Open organization portal
+              Open dashboard
             </p>
             <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
               Create organizations, assign plans, update limits and module permissions.
             </p>
             <span className="mt-4 inline-flex text-sm font-semibold text-teal-700 group-hover:text-teal-600 dark:text-teal-400">
-              Go to portal →
+              Go to dashboard →
             </span>
           </Link>
           <Link
@@ -44,7 +44,7 @@ export default function Home() {
               Create super admin account
             </p>
             <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              Sign up, then sign in to manage organizations from the portal.
+              Sign up, then sign in to manage organizations from the dashboard.
             </p>
             <span className="mt-4 inline-flex text-sm font-semibold text-teal-700 group-hover:text-teal-600 dark:text-teal-400">
               Sign up →

@@ -2,7 +2,10 @@ import { getSessionFromCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import OrganizationSettingsClient from "./OrganizationSettingsClient";
-import { ensureOrganizationSlugs } from "@/lib/organization";
+import {
+  ensureOrganizationSlugs,
+  normalizeModuleAccessToArray,
+} from "@/lib/organization";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -47,9 +50,10 @@ export default async function OrganizationSettingsPage({ params }: PageProps) {
   }
 
   const userLimit = org.userLimit ?? 25;
-  const moduleAccess = org.moduleAccess?.length
-    ? org.moduleAccess
-    : ["Attendance", "Leave"];
+  const moduleAccess = normalizeModuleAccessToArray(org.moduleAccess);
+  if (moduleAccess.length === 0) {
+    moduleAccess.push("Attendance", "Leave");
+  }
 
   const organizationCreatedAtLabel = new Date(org.createdAt).toLocaleDateString(
     "en-US",

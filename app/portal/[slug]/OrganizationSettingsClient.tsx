@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   errorBoxClass,
   formInputClass,
   formLabelClass,
-  pageShellClass,
   primaryButtonClass,
   successBoxClass,
 } from "@/lib/form-styles";
+
 
 type OrganizationSettingsProps = {
   organizationId: string;
@@ -49,6 +50,7 @@ export default function OrganizationSettingsClient({
   initialStartDate,
   initialAutoDeactivateDate,
 }: OrganizationSettingsProps) {
+  const router = useRouter();
   const [userLimit, setUserLimit] = useState(initialUserLimit);
   const [isActive, setIsActive] = useState(initialIsActive);
   const [startDate, setStartDate] = useState(
@@ -61,6 +63,7 @@ export default function OrganizationSettingsClient({
     new Set(initialModules),
   );
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAllModules, setShowAllModules] = useState(false);
@@ -152,16 +155,7 @@ export default function OrganizationSettingsClient({
   }
 
   return (
-    <div className={`${pageShellClass} flex min-h-[100dvh] w-full flex-col`}>
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40 dark:opacity-20"
-        aria-hidden
-        style={{
-          backgroundImage:
-            "radial-gradient(at 0% 0%, rgb(20 184 166 / 0.12) 0px, transparent 50%), radial-gradient(at 100% 100%, rgb(99 102 241 / 0.1) 0px, transparent 45%)",
-        }}
-      />
-      <main className="relative flex w-full max-w-none flex-1 flex-col gap-10 px-4 pb-16 pt-6 sm:px-6 lg:px-10 xl:px-14 2xl:px-16">
+    <div className="flex w-full max-w-none flex-1 flex-col gap-10 px-4 pb-16 pt-6 sm:px-6 lg:px-8">
         <header>
           <Link
             href="/portal"
@@ -176,7 +170,7 @@ export default function OrganizationSettingsClient({
             {organizationName}
           </h1>
           <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-600 dark:text-slate-400">
-            <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <span className="rounded-lg bg-white px-2.5 py-1 font-mono text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
               {organizationSlug}
             </span>
             <span>Created {organizationCreatedAtLabel}</span>
@@ -204,7 +198,7 @@ export default function OrganizationSettingsClient({
                   className={`flex flex-col items-start rounded-2xl border p-4 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50 ${
                     enabled
                       ? "border-teal-500/50 bg-gradient-to-br from-teal-500/10 to-emerald-600/5 ring-1 ring-teal-500/20 dark:from-teal-950/40 dark:to-emerald-950/20 dark:border-teal-600/40"
-                      : "border-slate-200/90 bg-slate-50/50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-slate-600"
+                      : "border-slate-200/90 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-slate-600"
                   }`}
                 >
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -251,7 +245,7 @@ export default function OrganizationSettingsClient({
           <form className="mt-8 space-y-8" onSubmit={saveSettings}>
             <div>
               <p className={formLabelClass}>Status</p>
-              <label className="inline-flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200">
+              <label className="inline-flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200">
                 <input
                   type="checkbox"
                   checked={isActive}
@@ -310,7 +304,53 @@ export default function OrganizationSettingsClient({
             </button>
           </form>
         </section>
-      </main>
+
+        {/* Delete section */}
+        <section className="rounded-2xl border border-rose-200/80 bg-white/90 p-6 shadow-xl shadow-rose-200/20 ring-1 ring-rose-200/50 backdrop-blur-sm dark:border-rose-900/50 dark:bg-slate-900/80 dark:shadow-none dark:ring-rose-900/30">
+          <h2 className="text-lg font-semibold text-rose-800 dark:text-rose-300">
+            Danger zone
+          </h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Deleting this organization will permanently remove all associated users, departments, employees, and data. This cannot be undone.
+          </p>
+
+          {error ? <div className={`mt-6 ${errorBoxClass}`}>{error}</div> : null}
+
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={async () => {
+              const confirmed = window.confirm(
+                `Are you sure you want to delete "${organizationName}"? This action cannot be undone. All associated data will be permanently removed.`,
+              );
+              if (!confirmed) return;
+
+              setDeleting(true);
+              setError(null);
+
+              try {
+                const response = await fetch(`/api/portal/${organizationId}`, {
+                  method: "DELETE",
+                });
+
+                if (!response.ok) {
+                  const payload = (await response.json()) as { error?: string };
+                  throw new Error(payload.error || "Failed to delete organization");
+                }
+
+                toast.success(`${organizationName} deleted`);
+                router.push("/portal");
+                router.refresh();
+              } catch (deleteError) {
+                setError(deleteError instanceof Error ? deleteError.message : "Unknown error");
+                setDeleting(false);
+              }
+            }}
+            className="mt-6 inline-flex items-center justify-center rounded-xl border border-rose-300 bg-rose-50 px-5 py-2.5 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/60"
+          >
+            {deleting ? "Deleting…" : `Delete "${organizationName}"`}
+          </button>
+        </section>
     </div>
   );
 }

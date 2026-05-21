@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { pageShellClass, secondaryLinkButtonClass } from "@/lib/form-styles";
 import Link from "next/link";
+import { secondaryLinkButtonClass } from "@/lib/form-styles";
 
 export default async function DepartmentsPage() {
   const departments = await prisma.department.findMany({
@@ -13,16 +13,7 @@ export default async function DepartmentsPage() {
   });
 
   return (
-    <div className={`${pageShellClass} flex min-h-[100dvh] w-full flex-col`}>
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40 dark:opacity-20"
-        aria-hidden
-        style={{
-          backgroundImage:
-            "radial-gradient(at 0% 0%, rgb(20 184 166 / 0.12) 0px, transparent 50%), radial-gradient(at 100% 100%, rgb(99 102 241 / 0.1) 0px, transparent 45%)",
-        }}
-      />
-      <main className="relative mx-auto w-full max-w-none flex-1 px-4 pb-16 pt-10 sm:px-6 lg:px-10 xl:px-14 2xl:px-16">
+    <div className="px-4 pb-16 pt-6 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-teal-600 dark:text-teal-400">
@@ -36,13 +27,13 @@ export default async function DepartmentsPage() {
             </p>
           </div>
           <Link href="/portal" className={secondaryLinkButtonClass}>
-            ← Back to portal
+            ← Back to dashboard
           </Link>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white/90 shadow-xl shadow-slate-200/30 ring-1 ring-slate-200/50 backdrop-blur-sm dark:border-slate-700/90 dark:bg-slate-900/80 dark:shadow-none dark:ring-slate-800">
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-            <thead className="bg-slate-50/90 dark:bg-slate-950/80">
+            <thead className="bg-white dark:bg-slate-950/80">
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 <th className="px-5 py-3">Department</th>
                 <th className="px-5 py-3">Organization</th>
@@ -60,7 +51,7 @@ export default async function DepartmentsPage() {
                 departments.map((department) => (
                   <tr
                     key={department.id}
-                    className="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+                    className="transition hover:bg-white dark:hover:bg-slate-800/40"
                   >
                     <td className="px-5 py-4 font-medium text-slate-900 dark:text-slate-100">
                       {department.name}
@@ -77,7 +68,6 @@ export default async function DepartmentsPage() {
             </tbody>
           </table>
         </div>
-      </main>
     </div>
   );
 }
