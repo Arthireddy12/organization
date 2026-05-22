@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getSessionFromCookie } from "@/lib/auth";
-import PortalClient, { type OrganizationPortalApi } from "./PortalClient";
+import PortalClient, { type InvoicePortalApi, type OrganizationPortalApi } from "./PortalClient";
 import { redirect } from "next/navigation";
 import {
   ensureOrganizationSlugs,
@@ -18,14 +18,20 @@ export default async function PortalPage() {
 
   await ensureOrganizationSlugs();
 
-  const organizations = await prisma.organization.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      users: {
-        select: { id: true },
+  const [organizations, invoices] = await Promise.all([
+    prisma.organization.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        users: {
+          select: { id: true },
+        },
       },
-    },
-  });
+    }),
+    prisma.invoice.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+  ]);
 
   const initialOrganizations: OrganizationPortalApi[] = organizations.map((org) => ({
     id: org.id,
@@ -36,12 +42,27 @@ export default async function PortalPage() {
     userCount: org.users.length,
     portal: {
       id: org.id,
-      planName: org.planName ?? "Starter",
+      planName: org.planName ?? null,
       userLimit: org.userLimit ?? 25,
       moduleAccess: normalizeModuleAccessToArray(org.moduleAccess),
       isActive: org.isActive,
     },
+    startDate: org.startDate?.toISOString() ?? null,
+    autoDeactivateDate: org.autoDeactivateDate?.toISOString() ?? null,
   }));
 
-  return <PortalClient initialOrganizations={initialOrganizations} />;
+  const initialInvoices: InvoicePortalApi[] = invoices.map((invoice) => ({
+    id: invoice.id,
+    invoiceNumber: invoice.invoiceNumber,
+    organizationName: invoice.organizationName,
+    finalAmount: invoice.finalAmount,
+    createdAt: invoice.createdAt.toISOString(),
+  }));
+
+  return (
+    <PortalClient
+      initialOrganizations={initialOrganizations}
+      initialInvoices={initialInvoices}
+    />
+  );
 }

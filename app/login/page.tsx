@@ -10,6 +10,7 @@ import {
   pageShellClass,
   primaryButtonClass,
 } from "@/lib/form-styles";
+import { useAuth } from "@/components/AuthContext";
 import {
   Mail,
   Lock,
@@ -21,6 +22,7 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -33,17 +35,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const payload = (await response.json()) as { error?: string };
-        throw new Error(payload.error || "Login failed");
-      }
-
+      await login(email, password);
       router.push("/portal");
       router.refresh();
     } catch (submitError) {
@@ -55,33 +47,48 @@ export default function LoginPage() {
 
   return (
     <div className={pageShellClass}>
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40 dark:opacity-20"
-        aria-hidden
-        style={{
-          backgroundImage:
-            "radial-gradient(at 20% 20%, rgb(20 184 166 / 0.15) 0px, transparent 50%), radial-gradient(at 80% 80%, rgb(99 102 241 / 0.12) 0px, transparent 45%)",
-        }}
-      />
-      <main className="relative flex min-h-screen flex-col items-center justify-center px-4 py-16 sm:px-6">
-        {/* Logo */}
-        <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 text-xl font-bold text-white shadow-lg shadow-teal-500/20">
-          H
-        </div>
+      <main className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_480px]">
+        <section className="hidden border-r border-slate-200 bg-white px-12 py-10 lg:flex lg:flex-col">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white shadow-lg shadow-indigo-100">
+              H
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-950">HRMS Dashboard</p>
+              <p className="text-xs text-slate-500">Organization Dashboard</p>
+            </div>
+          </div>
+          <div className="my-auto max-w-xl">
+            <p className="text-xs font-bold uppercase text-indigo-600">Super Admin Portal</p>
+            <h1 className="mt-4 text-5xl font-bold tracking-tight text-slate-950">
+              Manage every organization from one quiet command center.
+            </h1>
+            <p className="mt-5 text-base leading-7 text-slate-500">
+              Sign in to handle billing, subscriptions, users, HRMS modules, and organization settings.
+            </p>
+          </div>
+        </section>
 
-        <div className="mb-8 text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-teal-600 dark:text-teal-400">
-            HRMS
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Welcome back
-          </h1>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            Sign in to manage organizations and tenant settings.
-          </p>
-        </div>
+        <section className="flex min-h-screen items-center justify-center px-5 py-10">
+          <div className="w-full max-w-md">
+            <div className="mb-8 lg:hidden">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white">
+                H
+              </div>
+              <p className="text-sm font-bold text-slate-950">HRMS Dashboard</p>
+            </div>
 
-        <section className="w-full max-w-md animate-fade-in rounded-2xl border border-slate-200/90 bg-white/90 p-8 shadow-xl shadow-slate-200/40 ring-1 ring-slate-200/50 backdrop-blur-sm dark:border-slate-700/90 dark:bg-slate-900/80 dark:shadow-none dark:ring-slate-800">
+            <div className="mb-8">
+              <p className="text-xs font-bold uppercase text-indigo-600">Welcome back</p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
+                Sign in to your account
+              </h1>
+              <p className="mt-2 text-sm text-slate-500">
+                Use your super admin credentials to continue.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/60">
           {error ? (
             <div className={`mb-6 ${errorBoxClass}`}>
               <div className="flex items-center gap-2">
@@ -166,11 +173,13 @@ export default function LoginPage() {
             New here?{" "}
             <Link
               href="/signup"
-              className="font-semibold text-teal-700 hover:text-teal-600 dark:text-teal-400 dark:hover:text-teal-300"
+              className="font-semibold text-indigo-600 hover:text-indigo-500"
             >
               Create an account
             </Link>
           </p>
+            </div>
+          </div>
         </section>
       </main>
     </div>

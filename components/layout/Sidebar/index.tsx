@@ -4,23 +4,19 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
-  BarChart3,
   Building2,
   CreditCard,
   LayoutDashboard,
   Users,
   FileText,
-  Ticket,
-  Megaphone,
   Settings,
   LogOut,
   Menu,
   X,
   ChevronDown,
-  Crown,
-  ChevronRight,
 } from "lucide-react";
 import { useSidebar } from "@/components/DashboardShell";
+import { useAuth } from "@/components/AuthContext";
 import type { ElementType } from "react";
 
 type NavItem = {
@@ -32,16 +28,15 @@ type NavItem = {
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/portal", icon: LayoutDashboard },
   { label: "Organizations", href: "/portal/organizations", icon: Building2 },
-  { label: "Subscriptions", href: "/portal/subscriptions", icon: CreditCard },
   { label: "Users", href: "/portal/users", icon: Users },
-  { label: "Billing & Invoices", href: "/portal/billing", icon: FileText },
-  { label: "Settings", href: "/portal/settings", icon: Settings },
+  { label: "Billing & Invoices", href: "/billing", icon: FileText },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { collapsed, toggleCollapsed } = useSidebar();
+  const { collapsed } = useSidebar();
+  const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (href: string) => {
@@ -50,13 +45,18 @@ export default function Sidebar() {
   };
 
   async function handleLogout() {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } finally {
-      router.push("/login");
-      router.refresh();
-    }
+    await logout();
+    router.push("/login");
+    router.refresh();
   }
+
+  const userInitials =
+    user?.name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "AD";
 
   const sidebarContent = (
     <nav className="flex h-full flex-col bg-white">
@@ -112,20 +112,6 @@ export default function Sidebar() {
         {/* 3. Promo Card (Hidden if collapsed) */}
         {!collapsed && (
           <div className="mt-10 mb-6 px-2">
-            <div className="relative overflow-hidden rounded-2xl bg-indigo-50 p-5 ring-1 ring-inset ring-indigo-100/50">
-              <div className="relative z-10">
-                <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
-                  <Crown size={16} />
-                </div>
-                <h4 className="text-xs font-bold text-slate-900">Grow Your Business</h4>
-                <p className="mt-1 text-[10px] font-medium leading-relaxed text-slate-500">
-                  Invite more organizations and grow your revenue.
-                </p>
-                <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2 text-[11px] font-bold text-white transition hover:bg-indigo-700 shadow-md shadow-indigo-100">
-                  Invite Organization <ChevronRight size={12} />
-                </button>
-              </div>
-            </div>
           </div>
         )}
       </div>
@@ -134,13 +120,13 @@ export default function Sidebar() {
       <div className="border-t border-slate-50 p-4">
         <div className={`flex items-center gap-3 rounded-xl p-2 transition hover:bg-slate-50 cursor-pointer ${collapsed ? "justify-center" : ""}`}>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-[11px] font-bold text-white">
-            AD
+            {userInitials}
           </div>
           {!collapsed && (
             <div className="flex flex-1 items-center justify-between min-w-0">
               <div className="min-w-0">
-                <p className="truncate text-xs font-bold text-slate-900">Admin User</p>
-                <p className="text-[10px] font-medium text-slate-400">Super Admin</p>
+                <p className="truncate text-xs font-bold text-slate-900">{user?.name || "Admin User"}</p>
+                <p className="text-[10px] font-medium text-slate-400">{user?.role || "Super Admin"}</p>
               </div>
               <ChevronDown size={14} className="text-slate-400" />
             </div>

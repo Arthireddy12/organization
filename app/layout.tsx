@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ToasterClient } from "@/components/ToasterClient";
 import AppLayout from "@/components/AppLayout";
+import { AuthProvider } from "@/components/AuthContext";
+import "react-phone-number-input/style.css";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,7 +33,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-white">
-        <AppLayout>{children}</AppLayout>
+        <AuthProvider>
+          <AppLayout>{children}</AppLayout>
+        </AuthProvider>
         <ToasterClient />
       </body>
     </html>

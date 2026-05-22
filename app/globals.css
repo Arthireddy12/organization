@@ -72,3 +72,50 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgb(148 163 184 / 0.5);
 }
+
+.invoice-phone-input {
+  display: flex;
+  height: 2.75rem;
+  width: 100%;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(226 232 240);
+  background: white;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  color: rgb(30 41 59);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.invoice-phone-input:focus-within {
+  border-color: rgb(203 213 225);
+  box-shadow: none;
+}
+
+.invoice-phone-input .PhoneInputCountry {
+  margin-right: 0;
+}
+
+.invoice-phone-input .PhoneInputCountrySelectArrow {
+  color: rgb(100 116 139);
+  opacity: 1;
+}
+
+.invoice-phone-input .PhoneInputInput {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: rgb(30 41 59);
+  outline: 0;
+}
+
+.invoice-phone-input .PhoneInputInput::placeholder {
+  color: rgb(148 163 184);
+}
+
+.invoice-phone-input .PhoneInputInput:disabled {
+  cursor: not-allowed;
+}
