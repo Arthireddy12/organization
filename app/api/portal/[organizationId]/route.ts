@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSessionFromCookie } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { normalizeModuleAccessToObject } from "@/lib/organization";
+import { type ModuleAccessObject, normalizeModuleAccessToObject } from "@/lib/organization";
 
 type UpdatePortalBody = {
   planName?: string;
@@ -30,7 +30,7 @@ export async function PATCH(
     const updates: {
       planName?: string;
       userLimit?: number;
-      moduleAccess?: string[];
+      moduleAccess?: ModuleAccessObject;
       isActive?: boolean;
       startDate?: Date | null;
       autoDeactivateDate?: Date | null;

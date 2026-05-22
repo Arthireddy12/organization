@@ -1,16 +1,18 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { Bell, Search, LogOut } from "lucide-react"; // Added LogOut icon
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthContext";
 
 export default function Navbar() {
-  const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
 
-  // Mock logout function
-  const handleLogout = () => {
-    console.log("Logging out...");
-    // Add your logout logic here (e.g., supabase.auth.signOut() or clerk.signOut())
-  };
+  async function handleLogout() {
+    await logout();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <header className="sticky top-0 z-20 h-16 border-b border-slate-100 bg-white/80 backdrop-blur-md">

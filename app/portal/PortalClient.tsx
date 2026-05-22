@@ -7,14 +7,13 @@ import {
   Building2,
   CalendarCheck,
   CircleDollarSign,
-  ClipboardPlus,
   MoreVertical,
   Plane,
   TrendingUp,
-  UserRoundPlus,
   Users,
   WalletCards,
 } from "lucide-react";
+import type { ComponentType } from "react";
 import { MetricCard } from "@/components/common/metric-card";
 import { Pagination } from "@/components/common/pagination";
 import { Panel, PanelHeader } from "@/components/common/panel";
@@ -26,56 +25,43 @@ export type OrganizationPortalApi = {
   createdAt: string;
   updatedAt: string;
   userCount: number;
+  startDate: string | null;
+  autoDeactivateDate: string | null;
   portal: {
     id: string;
-    planName: string;
+    planName: string | null;
     userLimit: number;
     moduleAccess: string[];
     isActive: boolean;
   } | null;
 };
 
-type PortalClientProps = {
-  initialOrganizations: OrganizationPortalApi[];
+export type InvoicePortalApi = {
+  id: string;
+  invoiceNumber: string;
+  organizationName: string;
+  finalAmount: number;
+  createdAt: string;
 };
 
-const moduleCards = [
-  { label: "Employee Management", icon: Users, tone: "text-blue-600 bg-blue-50" },
-  { label: "Attendance", icon: CalendarCheck, tone: "text-emerald-600 bg-emerald-50" },
-  { label: "Payroll", icon: WalletCards, tone: "text-orange-600 bg-orange-50" },
-  { label: "Leave Management", icon: Plane, tone: "text-violet-600 bg-violet-50" },
-  { label: "Performance", icon: TrendingUp, tone: "text-pink-600 bg-pink-50" },
-  { label: "Reports & Analytics", icon: BarChart3, tone: "text-cyan-600 bg-cyan-50" },
-];
+type PortalClientProps = {
+  initialOrganizations: OrganizationPortalApi[];
+  initialInvoices: InvoicePortalApi[];
+};
 
-const revenuePoints = [18, 36, 48, 42, 64, 61, 78, 84, 100];
 const planColors = ["#7c3aed", "#2563eb", "#22c55e", "#f59e0b", "#ec4899"];
-const activityItems = [
-  {
-    title: "New organization registered",
-    time: "2 hours ago",
-    icon: ClipboardPlus,
-    tone: "text-violet-600 bg-violet-50",
-  },
-  {
-    title: "Subscription renewed",
-    time: "5 hours ago",
-    icon: WalletCards,
-    tone: "text-emerald-600 bg-emerald-50",
-  },
-  {
-    title: "New user added",
-    time: "1 day ago",
-    icon: UserRoundPlus,
-    tone: "text-orange-600 bg-orange-50",
-  },
-  {
-    title: "Payment received",
-    time: "2 days ago",
-    icon: CircleDollarSign,
-    tone: "text-pink-600 bg-pink-50",
-  },
-];
+
+const moduleMeta: Record<string, { icon: ComponentType<{ size?: number }>; tone: string }> = {
+  Employees: { icon: Users, tone: "text-blue-600 bg-blue-50" },
+  Attendance: { icon: CalendarCheck, tone: "text-emerald-600 bg-emerald-50" },
+  "HR Payroll Portal": { icon: WalletCards, tone: "text-orange-600 bg-orange-50" },
+  "Payroll Policy Engine": { icon: WalletCards, tone: "text-orange-600 bg-orange-50" },
+  Leaves: { icon: Plane, tone: "text-violet-600 bg-violet-50" },
+  "Leave Intelligence": { icon: Plane, tone: "text-violet-600 bg-violet-50" },
+  Analytics: { icon: BarChart3, tone: "text-cyan-600 bg-cyan-50" },
+  Dashboard: { icon: BarChart3, tone: "text-slate-600 bg-slate-50" },
+  Projects: { icon: TrendingUp, tone: "text-pink-600 bg-pink-50" },
+};
 
 function initials(name: string) {
   return name
@@ -94,6 +80,26 @@ function formatDate(date: string) {
   }).format(new Date(date));
 }
 
+function formatCurrency(value: number) {
+  return `Rs ${value.toLocaleString("en-IN", {
+    maximumFractionDigits: 0,
+  })}`;
+}
+
+function relativeTime(date: string) {
+  const timestamp = new Date(date).getTime();
+  if (Number.isNaN(timestamp)) return "";
+
+  const diffMs = Date.now() - timestamp;
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < hour) return `${Math.max(1, Math.floor(diffMs / minute))} minutes ago`;
+  if (diffMs < day) return `${Math.floor(diffMs / hour)} hours ago`;
+  return `${Math.floor(diffMs / day)} days ago`;
+}
+
 function planTone(planName?: string) {
   const plan = planName?.toLowerCase() ?? "";
   if (plan.includes("enterprise")) return "bg-violet-100 text-violet-700";
@@ -104,8 +110,10 @@ function planTone(planName?: string) {
 
 export default function PortalClient({
   initialOrganizations,
+  initialInvoices,
 }: PortalClientProps) {
   const organizations = initialOrganizations;
+  const invoices = initialInvoices;
 
   const stats = useMemo(() => {
     const totalOrganizations = organizations.length;
@@ -120,33 +128,137 @@ export default function PortalClient({
       totalOrganizations,
       activeOrganizations,
       totalUsers,
-      monthlyRevenue: organizations.reduce(
-        (sum, org) => sum + (org.portal?.userLimit ?? 0) * 490,
-        0,
-      ),
+      totalRevenue: invoices.reduce((sum, invoice) => sum + invoice.finalAmount, 0),
+      currentMonthRevenue: invoices.reduce((sum, invoice) => {
+        const date = new Date(invoice.createdAt);
+        const now = new Date();
+        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
+          ? sum + invoice.finalAmount
+          : sum;
+      }, 0),
+      previousMonthRevenue: invoices.reduce((sum, invoice) => {
+        const date = new Date(invoice.createdAt);
+        const now = new Date();
+        const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        return date.getMonth() === previousMonth.getMonth() && date.getFullYear() === previousMonth.getFullYear()
+          ? sum + invoice.finalAmount
+          : sum;
+      }, 0),
     };
-  }, [organizations]);
+  }, [organizations, invoices]);
 
   const visibleOrganizations = organizations.slice(0, 5);
-  const planCounts = organizations.reduce<Record<string, number>>((acc, org) => {
-    const plan = org.portal?.planName || "Basic";
-    acc[plan] = (acc[plan] || 0) + 1;
-    return acc;
-  }, {});
-  const planEntries = Object.entries(planCounts);
-  const chartTotal = planEntries.reduce((sum, [, count]) => sum + count, 0);
+  const subscriptionCounts = organizations.reduce(
+    (acc, org) => {
+      const now = new Date();
+      const start = org.startDate ? new Date(org.startDate) : null;
+      const end = org.autoDeactivateDate ? new Date(org.autoDeactivateDate) : null;
+      const willStart = start ? start.getTime() > now.getTime() : false;
+      const isExpired = end ? end.getTime() <= now.getTime() : false;
+
+      if (willStart) {
+        acc.pending += 1;
+      } else if (isExpired) {
+        acc.expired += 1;
+      } else {
+        acc.active += 1;
+      }
+      return acc;
+    },
+    { active: 0, expired: 0, pending: 0 },
+  );
+
+  const subscriptionEntries = [
+    { label: "Active", count: subscriptionCounts.active, color: "#22c55e", badge: "bg-emerald-600" },
+    { label: "Expired", count: subscriptionCounts.expired, color: "#ef4444", badge: "bg-rose-600" },
+    { label: "Pending Start", count: subscriptionCounts.pending, color: "#2563eb", badge: "bg-blue-600" },
+  ];
+
+  const chartTotal = subscriptionEntries.reduce((sum, item) => sum + item.count, 0);
   let chartCursor = 0;
   const chartGradient =
     chartTotal > 0
-      ? planEntries
-          .map(([, count], index) => {
+      ? subscriptionEntries
+          .map((item) => {
             const start = chartCursor;
-            const end = chartCursor + (count / chartTotal) * 100;
+            const end = chartCursor + (item.count / chartTotal) * 100;
             chartCursor = end;
-            return `${planColors[index % planColors.length]} ${start}% ${end}%`;
+            return `${item.color} ${start}% ${end}%`;
           })
           .join(", ")
       : "#e2e8f0 0% 100%";
+
+  const revenuePoints = useMemo(() => {
+    const now = new Date();
+    const buckets = Array.from({ length: 9 }, (_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - (8 - index), 1);
+      return { label: date.toLocaleDateString("en", { month: "short" }), total: 0 };
+    });
+
+    invoices.forEach((invoice) => {
+      const date = new Date(invoice.createdAt);
+      const bucket = buckets.find(
+        (item, index) => {
+          const bucketDate = new Date(now.getFullYear(), now.getMonth() - (8 - index), 1);
+          return date.getMonth() === bucketDate.getMonth() && date.getFullYear() === bucketDate.getFullYear();
+        },
+      );
+      if (bucket) bucket.total += invoice.finalAmount;
+    });
+
+    const max = Math.max(...buckets.map((bucket) => bucket.total), 1);
+    return buckets.map((bucket) => ({
+      ...bucket,
+      height: bucket.total > 0 ? Math.max(12, (bucket.total / max) * 100) : 8,
+    }));
+  }, [invoices]);
+
+  const revenueTrend = stats.previousMonthRevenue
+    ? ((stats.currentMonthRevenue - stats.previousMonthRevenue) / stats.previousMonthRevenue) * 100
+    : stats.currentMonthRevenue > 0
+      ? 100
+      : 0;
+
+  const activityItems = useMemo(() => {
+    const organizationActivities = organizations.slice(0, 5).map((org) => ({
+      id: `org-${org.id}`,
+      title: `${org.name} registered`,
+      time: relativeTime(org.createdAt),
+      createdAt: org.createdAt,
+      icon: Building2,
+      tone: "text-violet-600 bg-violet-50",
+    }));
+
+    const invoiceActivities = invoices.slice(0, 5).map((invoice) => ({
+      id: `invoice-${invoice.id}`,
+      title: `${invoice.invoiceNumber} generated`,
+      time: relativeTime(invoice.createdAt),
+      createdAt: invoice.createdAt,
+      icon: CircleDollarSign,
+      tone: "text-emerald-600 bg-emerald-50",
+    }));
+
+    return [...organizationActivities, ...invoiceActivities]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 4);
+  }, [organizations, invoices]);
+
+  const moduleCards = useMemo(() => {
+    const counts = organizations.reduce<Record<string, number>>((acc, org) => {
+      org.portal?.moduleAccess.forEach((moduleName) => {
+        acc[moduleName] = (acc[moduleName] || 0) + 1;
+      });
+      return acc;
+    }, {});
+
+    return Object.entries(counts)
+      .sort(([, firstCount], [, secondCount]) => secondCount - firstCount)
+      .slice(0, 6)
+      .map(([label, count]) => {
+        const meta = moduleMeta[label] || { icon: BarChart3, tone: "text-slate-600 bg-slate-50" };
+        return { label, count, ...meta };
+      });
+  }, [organizations]);
 
   return (
     <div className="px-6 pb-10 pt-4 lg:px-8">
@@ -183,11 +295,11 @@ export default function PortalClient({
         <MetricCard
           label="Monthly Revenue"
           value={
-            stats.monthlyRevenue
-              ? `Rs ${stats.monthlyRevenue.toLocaleString("en-IN")}`
+            stats.currentMonthRevenue
+              ? formatCurrency(stats.currentMonthRevenue)
               : "Rs 0"
           }
-          trend="estimated"
+          trend="from invoices"
           icon={<CircleDollarSign size={22} />}
           tone="amber"
         />
@@ -223,7 +335,7 @@ export default function PortalClient({
                     <th className="px-5 py-3">Plan</th>
                     <th className="px-5 py-3">Users</th>
                     <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3">Subscription</th>
+                    <th className="px-5 py-3">Subscription dates</th>
                     <th className="px-5 py-3 text-right">Action</th>
                   </tr>
                 </thead>
@@ -252,7 +364,7 @@ export default function PortalClient({
                               organization.portal?.planName,
                             )}`}
                           >
-                            {organization.portal?.planName || "Basic"}
+                            {organization.portal?.planName || "N/A"}
                           </span>
                         </td>
                         <td className="px-5 py-3 font-medium text-slate-700">
@@ -271,7 +383,14 @@ export default function PortalClient({
                           </span>
                         </td>
                         <td className="px-5 py-3 text-slate-600">
-                          {formatDate(organization.createdAt)}
+                          <div className="font-semibold text-slate-800">
+                            {organization.startDate ? formatDate(organization.startDate) : "-"}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {organization.autoDeactivateDate
+                              ? `Ends ${formatDate(organization.autoDeactivateDate)}`
+                              : "No end date"}
+                          </div>
                         </td>
                         <td className="px-5 py-3 text-right">
                           <Link
@@ -318,23 +437,17 @@ export default function PortalClient({
                   </div>
                 </div>
                 <div className="w-full space-y-3">
-                  {planEntries.map(([label, count], index) => (
-                    <div key={label} className="flex items-center justify-between text-sm">
+                  {subscriptionEntries.map((entry) => (
+                    <div key={entry.label} className="flex items-center justify-between text-sm">
                       <span className="flex items-center gap-2 text-slate-600">
-                        <span
-                          className={`h-2.5 w-2.5 rounded-full ${
-                            ["bg-violet-600", "bg-blue-600", "bg-emerald-500", "bg-amber-500"][
-                              index % 4
-                            ]
-                          }`}
-                        />
-                        {label}
+                        <span className={`h-2.5 w-2.5 rounded-full ${entry.badge}`} />
+                        {entry.label}
                       </span>
-                      <span className="font-semibold text-slate-700">{count}</span>
+                      <span className="font-semibold text-slate-700">{entry.count}</span>
                     </div>
                   ))}
-                  {planEntries.length === 0 && (
-                    <p className="text-sm text-slate-500">No subscriptions yet.</p>
+                  {chartTotal === 0 && (
+                    <p className="text-sm text-slate-500">No subscription dates available yet.</p>
                   )}
                 </div>
               </div>
@@ -380,25 +493,28 @@ export default function PortalClient({
             </div>
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-2xl font-bold text-slate-950">Rs 2,45,000</p>
+                <p className="text-2xl font-bold text-slate-950">{formatCurrency(stats.totalRevenue)}</p>
                 <p className="text-xs text-slate-500">Total Revenue</p>
               </div>
-              <p className="text-xs font-semibold text-emerald-600">18% vs last month</p>
+              <p className={`text-xs font-semibold ${revenueTrend >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                {Math.abs(revenueTrend).toFixed(0)}% vs last month
+              </p>
             </div>
             <div className="mt-5 flex h-36 items-end gap-2 border-b border-slate-100">
               {revenuePoints.map((point, index) => (
                 <div key={index} className="flex flex-1 items-end">
                   <div
                     className="w-full rounded-t-lg bg-gradient-to-t from-violet-200 to-violet-500"
-                    style={{ height: `${point}%` }}
+                    style={{ height: `${point.height}%` }}
+                    title={`${point.label}: ${formatCurrency(point.total)}`}
                   />
                 </div>
               ))}
             </div>
             <div className="mt-2 flex justify-between text-[11px] text-slate-400">
-              <span>May 12</span>
-              <span>May 26</span>
-              <span>Jun 12</span>
+              <span>{revenuePoints[0]?.label ?? "-"}</span>
+              <span>{revenuePoints[Math.floor(revenuePoints.length / 2)]?.label ?? "-"}</span>
+              <span>{revenuePoints[revenuePoints.length - 1]?.label ?? "-"}</span>
             </div>
           </Panel>
 
@@ -417,10 +533,18 @@ export default function PortalClient({
                     </span>
                     <span className="text-xs font-semibold leading-tight text-slate-700">
                       {item.label}
+                      <span className="mt-1 block text-[11px] font-medium text-slate-400">
+                        {item.count} orgs
+                      </span>
                     </span>
                   </button>
                 );
               })}
+              {moduleCards.length === 0 && (
+                <p className="col-span-2 text-sm text-slate-500">
+                  No module access has been configured yet.
+                </p>
+              )}
             </div>
             <button className="mt-4 text-xs font-semibold text-blue-600">
               View All Modules -&gt;
