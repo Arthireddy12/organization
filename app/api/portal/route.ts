@@ -10,8 +10,12 @@ import { hash } from "bcryptjs";
 
 type CreateOrganizationBody = {
   organizationName?: string;
-  planName?: string;
-  userLimit?: number;
+  organizationEmail?: string;
+  phoneNumber?: string;
+  industry?: string;
+  address?: string;
+  adminPhone?: string;
+  designation?: string;
   moduleAccess?: string[] | Record<string, boolean>;
   autoDeactivateDate?: string | null;
   superAdminName?: string;
@@ -31,6 +35,14 @@ function slugifyOrganizationName(value: string) {
 function mapOrgToPayload(org: {
   id: string;
   name: string;
+  email: string | null;
+  phone: string | null;
+  industry: string | null;
+  address: string | null;
+  adminName: string | null;
+  adminEmail: string | null;
+  adminPhone: string | null;
+  adminDesignation: string | null;
   slug: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -41,16 +53,24 @@ function mapOrgToPayload(org: {
   autoDeactivateDate: Date | null;
   moduleAccess: unknown;
   storageLimitGb: number | null;
-  apiAccess: boolean;
-  customBranding: boolean;
-  payrollEnabled: boolean;
-  attendanceEnabled: boolean;
-  recruitmentEnabled: boolean;
+  apiAccess: boolean | null;
+  customBranding: boolean | null;
+  payrollEnabled: boolean | null;
+  attendanceEnabled: boolean | null;
+  recruitmentEnabled: boolean | null;
   notes: string | null;
 }) {
   return {
     id: org.id,
     name: org.name,
+    email: org.email,
+    phone: org.phone,
+    industry: org.industry,
+    address: org.address,
+    adminName: org.adminName,
+    adminEmail: org.adminEmail,
+    adminPhone: org.adminPhone,
+    adminDesignation: org.adminDesignation,
     slug: org.slug,
     createdAt: org.createdAt,
     updatedAt: org.updatedAt,
@@ -63,11 +83,11 @@ function mapOrgToPayload(org: {
       startDate: org.startDate,
       autoDeactivateDate: org.autoDeactivateDate,
       storageLimitGb: org.storageLimitGb,
-      apiAccess: org.apiAccess,
-      customBranding: org.customBranding,
-      payrollEnabled: org.payrollEnabled,
-      attendanceEnabled: org.attendanceEnabled,
-      recruitmentEnabled: org.recruitmentEnabled,
+      apiAccess: org.apiAccess ?? false,
+      customBranding: org.customBranding ?? false,
+      payrollEnabled: org.payrollEnabled ?? true,
+      attendanceEnabled: org.attendanceEnabled ?? true,
+      recruitmentEnabled: org.recruitmentEnabled ?? false,
       notes: org.notes,
     },
   };
@@ -109,8 +129,13 @@ export async function POST(request: Request) {
     const body = (await request.json()) as CreateOrganizationBody;
 
     const organizationName = body.organizationName?.trim();
-    const planName = body.planName?.trim() || "Starter";
-    const userLimit = Number(body.userLimit ?? 25);
+    const organizationEmail = body.organizationEmail?.trim().toLowerCase();
+    const phoneNumber = body.phoneNumber?.trim();
+    const industry = body.industry?.trim();
+    const address = body.address?.trim();
+    const adminPhone = body.adminPhone?.trim();
+    const designation = body.designation?.trim();
+    const userLimit = 25;
     const moduleAccess = normalizeModuleAccessToObject(body.moduleAccess ?? []);
     const superAdminName = body.superAdminName?.trim();
     const superAdminEmail = body.superAdminEmail?.trim().toLowerCase();
@@ -120,6 +145,12 @@ export async function POST(request: Request) {
     if (!organizationName) {
       return NextResponse.json(
         { error: "organizationName is required" },
+        { status: 400 },
+      );
+    }
+    if (!organizationEmail) {
+      return NextResponse.json(
+        { error: "organizationEmail is required" },
         { status: 400 },
       );
     }
@@ -139,13 +170,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!Number.isFinite(userLimit) || userLimit < 1) {
-      return NextResponse.json(
-        { error: "userLimit must be a positive number" },
-        { status: 400 },
-      );
-    }
-
     const now = new Date();
     let autoDeactivateDate: Date | null = null;
     if (typeof autoDeactivateDateInput === "string" && autoDeactivateDateInput) {
@@ -160,18 +184,22 @@ export async function POST(request: Request) {
     }
 
     const baseSlug = slugifyOrganizationName(organizationName);
-    const slug =
-      baseSlug.length > 0
-        ? `${baseSlug}-${Date.now().toString(36)}`
-        : `org-${Date.now().toString(36)}`;
+    const slug = baseSlug.length > 0 ? baseSlug : `org-${Date.now().toString(36)}`;
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: superAdminEmail },
+    const existingOrganization = await prisma.organization.findFirst({
+      where: {
+        OR: [
+          { name: organizationName },
+          { email: organizationEmail },
+          { adminEmail: superAdminEmail },
+          { slug },
+        ],
+      },
       select: { id: true },
     });
-    if (existingUser) {
+    if (existingOrganization) {
       return NextResponse.json(
-        { error: "Super admin email already exists" },
+        { error: "Organization already exists" },
         { status: 409 },
       );
     }
@@ -181,33 +209,54 @@ export async function POST(request: Request) {
     const created = await prisma.organization.create({
       data: {
         name: organizationName,
+        email: organizationEmail,
+        phone: phoneNumber,
+        industry,
+        address,
+        adminName: superAdminName,
+        adminEmail: superAdminEmail,
+        adminPhone,
+        adminDesignation: designation,
         slug,
         createdAt: now,
         updatedAt: now,
-        planName,
-        userLimit: Math.trunc(userLimit),
+        userLimit,
         moduleAccess,
         isActive: true,
         startDate: now,
         autoDeactivateDate,
-        apiAccess: false,
-        customBranding: false,
-        payrollEnabled: true,
-        attendanceEnabled: true,
-        recruitmentEnabled: false,
       },
     });
 
-    await prisma.user.create({
-      data: {
-        name: superAdminName,
-        email: superAdminEmail,
-        password: passwordHash,
-        role: "SUPER_ADMIN",
-        organizationId: created.id,
-        createdAt: now,
-      },
-    });
+    try {
+      await prisma.user.create({
+        data: {
+          name: superAdminName,
+          email: superAdminEmail,
+          password: passwordHash,
+          role: "SUPER_ADMIN",
+          organizationId: created.id,
+          createdAt: now,
+        },
+      });
+    } catch (userCreateError) {
+      await prisma.organization.delete({ where: { id: created.id } });
+      if (
+        typeof userCreateError === "object" &&
+        userCreateError !== null &&
+        "code" in userCreateError &&
+        userCreateError.code === "P2002"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Admin email already exists. Use a different admin email for this organization.",
+          },
+          { status: 409 },
+        );
+      }
+      throw userCreateError;
+    }
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

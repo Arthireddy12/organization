@@ -36,6 +36,7 @@ export default async function PortalPage() {
   const initialOrganizations: OrganizationPortalApi[] = organizations.map((org) => ({
     id: org.id,
     name: org.name,
+    email: org.email,
     slug: org.slug ?? "",
     createdAt: org.createdAt.toISOString(),
     updatedAt: org.updatedAt.toISOString(),

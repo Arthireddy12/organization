@@ -19,6 +19,7 @@ import { Panel, PanelHeader } from "@/components/common/panel";
 export type OrganizationPortalApi = {
   id: string;
   name: string;
+  email?: string | null;
   slug: string;
   createdAt: string;
   updatedAt: string;
@@ -341,7 +342,8 @@ export default function PortalClient({
                                 {organization.name}
                               </p>
                               <p className="text-xs text-slate-500">
-                                admin@{organization.slug || `organization-${index + 1}`}.com
+                                {organization.email ||
+                                  `admin@${organization.slug || `organization-${index + 1}`}.com`}
                               </p>
                             </div>
                           </div>

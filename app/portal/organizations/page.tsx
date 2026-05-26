@@ -24,6 +24,7 @@ export default async function OrganizationsPage() {
     select: {
       id: true,
       name: true,
+      email: true,
       slug: true,
       planName: true,
       userLimit: true,
@@ -42,6 +43,7 @@ export default async function OrganizationsPage() {
   const organizationItems: OrganizationListItem[] = organizations.map((org) => ({
     id: org.id,
     name: org.name,
+    email: org.email ?? undefined,
     slug: org.slug ?? "",
     planName: org.planName ?? "Starter",
     userLimit: org.userLimit ?? 25,
