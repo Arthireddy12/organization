@@ -7,7 +7,6 @@ import {
   Building2,
   CalendarCheck,
   CircleDollarSign,
-  MoreVertical,
   Plane,
   TrendingUp,
   Users,
@@ -15,7 +14,6 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { MetricCard } from "@/components/common/metric-card";
-import { Pagination } from "@/components/common/pagination";
 import { Panel, PanelHeader } from "@/components/common/panel";
 
 export type OrganizationPortalApi = {
@@ -100,14 +98,6 @@ function relativeTime(date: string) {
   return `${Math.floor(diffMs / day)} days ago`;
 }
 
-function planTone(planName?: string) {
-  const plan = planName?.toLowerCase() ?? "";
-  if (plan.includes("enterprise")) return "bg-violet-100 text-violet-700";
-  if (plan.includes("professional")) return "bg-blue-100 text-blue-700";
-  if (plan.includes("basic")) return "bg-amber-100 text-amber-700";
-  return "bg-slate-100 text-slate-600";
-}
-
 export default function PortalClient({
   initialOrganizations,
   initialInvoices,
@@ -147,7 +137,7 @@ export default function PortalClient({
     };
   }, [organizations, invoices]);
 
-  const visibleOrganizations = organizations.slice(0, 5);
+  const visibleOrganizations = organizations.slice(0, 3);
   const subscriptionCounts = organizations.reduce(
     (acc, org) => {
       const now = new Date();
@@ -328,15 +318,13 @@ export default function PortalClient({
               </div>
             </PanelHeader>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-left text-sm">
+              <table className="w-full min-w-[640px] text-left text-sm">
                 <thead className="bg-white text-xs font-semibold text-slate-500">
                   <tr>
                     <th className="px-5 py-3">Organization Name</th>
-                    <th className="px-5 py-3">Plan</th>
                     <th className="px-5 py-3">Users</th>
                     <th className="px-5 py-3">Status</th>
                     <th className="px-5 py-3">Subscription dates</th>
-                    <th className="px-5 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -357,15 +345,6 @@ export default function PortalClient({
                               </p>
                             </div>
                           </div>
-                        </td>
-                        <td className="px-5 py-3">
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${planTone(
-                              organization.portal?.planName,
-                            )}`}
-                          >
-                            {organization.portal?.planName || "N/A"}
-                          </span>
                         </td>
                         <td className="px-5 py-3 font-medium text-slate-700">
                           {organization.userCount}
@@ -392,21 +371,12 @@ export default function PortalClient({
                               : "No end date"}
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-right">
-                          <Link
-                            href={`/portal/${organization.slug}`}
-                            className="inline-flex rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                            aria-label={`Manage ${organization.name}`}
-                          >
-                            <MoreVertical size={18} />
-                          </Link>
-                        </td>
                       </tr>
                     ),
                   )}
                   {visibleOrganizations.length === 0 && (
                     <tr>
-                      <td className="px-5 py-12 text-center text-sm text-slate-500" colSpan={6}>
+                      <td className="px-5 py-12 text-center text-sm text-slate-500" colSpan={4}>
                         No organizations yet. Add your first organization to fill this table.
                       </td>
                     </tr>
@@ -414,20 +384,19 @@ export default function PortalClient({
                 </tbody>
               </table>
             </div>
-            <Pagination page={1} pageCount={Math.max(1, Math.ceil(organizations.length / 5))} />
           </Panel>
 
           <div className="grid gap-5 lg:grid-cols-2">
             <Panel className="p-5">
               <h3 className="font-bold text-slate-950">Subscription Overview</h3>
-              <div className="mt-6 flex flex-col items-center gap-6 sm:flex-row">
+              <div className="mt-6 grid items-center gap-6 sm:grid-cols-[180px_minmax(0,1fr)]">
                 <div
-                  className="grid h-44 w-44 place-items-center rounded-full"
+                  className="relative mx-auto grid aspect-square w-44 shrink-0 place-items-center rounded-full"
                   style={{
                     background: `conic-gradient(${chartGradient})`,
                   }}
                 >
-                  <div className="grid h-24 w-24 place-items-center rounded-full bg-white text-center shadow-inner">
+                  <div className="absolute inset-12 grid place-items-center rounded-full bg-white text-center shadow-inner">
                     <div>
                       <p className="text-3xl font-bold text-slate-950">
                         {stats.totalOrganizations}
@@ -436,7 +405,7 @@ export default function PortalClient({
                     </div>
                   </div>
                 </div>
-                <div className="w-full space-y-3">
+                <div className="w-full space-y-4">
                   {subscriptionEntries.map((entry) => (
                     <div key={entry.label} className="flex items-center justify-between text-sm">
                       <span className="flex items-center gap-2 text-slate-600">

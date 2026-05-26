@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, Download, Eye, Search, Edit, Trash, ChevronLeft, MoreVertical } from 'lucide-react';
+import { Plus, Download, Eye, Search, Edit, Trash, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/common/button';
 import { Input } from '@/components/common/input';
 import { DataTable, DataTableHead, DataTableBody, DataTableRow, DataTableHeaderCell, DataTableCell } from '@/components/common/data-table';
@@ -120,17 +120,11 @@ export default function BillingPage() {
   const visibleEnd = Math.min(startIdx + itemsPerPage, filteredInvoices.length);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-6 text-slate-900 font-sans">
+    <div className="min-h-screen  p-6 text-slate-900 font-sans">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.back()}
-              className="h-10 w-10 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition"
-            >
-              <ChevronLeft size={20} className="text-slate-700" />
-            </button>
-
+            
             <div>
               <h1 className="text-2xl font-bold text-slate-900">
                 Billing & Subscription
@@ -191,24 +185,32 @@ export default function BillingPage() {
                   </DataTableCell>
                 </DataTableRow>
               ) : (
-                paginatedInvoices.map((invoice) => (
+                paginatedInvoices.map((invoice, index) => {
+                  const openUpward = index >= paginatedInvoices.length - 1;
+
+                  return (
                   <DataTableRow key={invoice.id}>
                     <DataTableCell className="font-medium">{invoice.invoiceNumber || invoice.id}</DataTableCell>
                     <DataTableCell>{invoice.organizationName}</DataTableCell>
                     <DataTableCell>{invoice.createdAt ? new Date(invoice.createdAt).toLocaleDateString() : '-'}</DataTableCell>
                     <DataTableCell className="font-semibold">Rs. {invoice.finalAmount?.toFixed?.(2) ?? invoice.finalAmount ?? '-'}</DataTableCell>
-                    <DataTableCell className="relative text-center">
+                    <DataTableCell className="relative min-w-36 text-center">
                       <div className="flex justify-center">
                         <Button
                           size="icon"
                           variant="secondary"
                           icon={<MoreVertical size={16} />}
+                          className="border-blue-100 bg-blue-50/70 text-slate-600 shadow-none hover:bg-blue-100/70"
                           onClick={() => setOpenActionId(openActionId === invoice.id ? null : invoice.id)}
                         />
                         {openActionId === invoice.id && (
-                          <div className="absolute right-8 top-12 z-20 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 text-left shadow-xl">
+                          <div
+                            className={`absolute right-10 z-50 w-48 overflow-hidden rounded-xl border border-blue-100 bg-blue-50 py-2 text-left shadow-xl shadow-slate-200/70 ${
+                              openUpward ? "bottom-12" : "top-12"
+                            }`}
+                          >
                             <button
-                              className="flex w-full items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                              className="flex w-full items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white/80"
                               onClick={() => {
                                 setOpenActionId(null);
                                 router.push(`/invoice?id=${invoice.id}&mode=view`);
@@ -217,7 +219,7 @@ export default function BillingPage() {
                               <Eye size={15} /> View
                             </button>
                             <button
-                              className="flex w-full items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                              className="flex w-full items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white/80"
                               onClick={() => {
                                 setOpenActionId(null);
                                 router.push(`/invoice?id=${invoice.id}`);
@@ -226,13 +228,13 @@ export default function BillingPage() {
                               <Edit size={15} /> Edit
                             </button>
                             <button
-                              className="flex w-full items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                              className="flex w-full items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white/80"
                               onClick={() => handleDownload(invoice)}
                             >
                               <Download size={15} /> Download PDF
                             </button>
                             <button
-                              className="flex w-full items-center gap-2 px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50"
+                              className="flex w-full items-center gap-2 px-4 py-2 text-sm font-medium text-rose-600 hover:bg-white/80"
                               onClick={() => {
                                 setOpenActionId(null);
                                 handleDelete(invoice.id);
@@ -245,7 +247,8 @@ export default function BillingPage() {
                       </div>
                     </DataTableCell>
                   </DataTableRow>
-                ))
+                  );
+                })
               )}
             </DataTableBody>
           </DataTable>

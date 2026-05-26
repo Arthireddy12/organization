@@ -49,28 +49,28 @@ export default function OrganizationsClient({ initialOrganizations }: Organizati
         label: "Total Organizations",
         value: totalOrganizations,
         hint: "from database",
-        icon: <Building2 className="text-violet-600" size={20} />,
+        icon: <Building2 className="text-violet-600" size={18} />,
         bg: "bg-violet-50",
       },
       {
         label: "Active Organizations",
         value: activeOrganizations,
         hint: "currently active",
-        icon: <Users2 className="text-emerald-600" size={20} />,
+        icon: <Users2 className="text-emerald-600" size={18} />,
         bg: "bg-emerald-50",
       },
       {
         label: "Total Subscriptions",
         value: totalOrganizations,
         hint: "same as organizations",
-        icon: <CreditCard className="text-blue-600" size={20} />,
+        icon: <CreditCard className="text-blue-600" size={18} />,
         bg: "bg-blue-50",
       },
       {
         label: "Total Users",
         value: totalUsers,
         hint: "from users table",
-        icon: <Users2 className="text-rose-600" size={20} />,
+        icon: <Users2 className="text-rose-600" size={18} />,
         bg: "bg-rose-50",
       },
     ];
@@ -79,26 +79,26 @@ export default function OrganizationsClient({ initialOrganizations }: Organizati
   return (
     <div className="min-h-screen font-sans text-slate-900">
       {/* Stats Cards */}
-      <div className="mb-6 grid grid-cols-4 gap-4">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat, i) => (
-          <div key={i} className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex justify-between items-start">
+          <div key={i} className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="mb-2 flex items-start justify-between">
               <div className={`${stat.bg} rounded-lg p-2`}>{stat.icon}</div>
             </div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{stat.label}</p>
-            <h3 className="text-2xl font-bold mt-1">{stat.value}</h3>
-            <div className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald-500">
-              <TrendingUp size={13} />
-              <span className="text-slate-400 font-medium">{stat.hint}</span>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{stat.label}</p>
+            <h3 className="mt-0.5 text-xl font-bold leading-tight text-slate-950">{stat.value}</h3>
+            <div className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-emerald-500">
+              <TrendingUp size={12} />
+              <span className="font-medium text-slate-400">{stat.hint}</span>
             </div>
           </div>
         ))}
       </div>
 
       {/* Main Table Card */}
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {/* Table Toolbar */}
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
             <h2 className="font-bold text-lg">Organizations</h2>
             <p className="text-xs text-slate-500 font-medium">View and manage all your organizations</p>
@@ -126,7 +126,6 @@ export default function OrganizationsClient({ initialOrganizations }: Organizati
             <thead className="bg-[#F9FAFB] text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
               <tr>
                 <th className="px-8 py-4">Organization</th>
-                <th className="px-6 py-4 text-center">Plan</th>
                 <th className="px-6 py-4 text-center">Users</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Renewal Date</th>
@@ -147,11 +146,6 @@ export default function OrganizationsClient({ initialOrganizations }: Organizati
                         <p className="text-[11px] text-slate-500 font-medium">{org.email || `${org.slug}@tech.com`}</p>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${getPlanStyle(org.planName)}`}>
-                      {org.planName}
-                    </span>
                   </td>
                   <td className="px-6 py-5 text-center">
                     <div className="flex items-center justify-center gap-1.5 font-bold text-slate-700 text-sm">
@@ -216,14 +210,6 @@ export default function OrganizationsClient({ initialOrganizations }: Organizati
       </div>
     </div>
   );
-}
-
-// Helper Styles
-function getPlanStyle(plan: string) {
-  const p = plan.toLowerCase();
-  if (p.includes('enterprise')) return "bg-indigo-50 border-indigo-100 text-indigo-600";
-  if (p.includes('professional')) return "bg-blue-50 border-blue-100 text-blue-600";
-  return "bg-orange-50 border-orange-100 text-orange-600";
 }
 
 function getAvatarColor(name: string) {

@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
   { label: "Organizations", href: "/portal/organizations", icon: Building2 },
   { label: "Users", href: "/portal/users", icon: Users },
   { label: "Billing & Invoices", href: "/billing", icon: FileText },
+  { label: "Settings", href: "/portal/settings", icon: Settings },
 ];
 
 export default function Sidebar() {
@@ -63,7 +64,7 @@ export default function Sidebar() {
       {/* 1. Header/Logo Area */}
       <div className={`flex h-20 items-center px-6 border-b border-slate-50 ${collapsed ? "justify-center px-0" : "gap-3"}`}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 shadow-lg shadow-indigo-100">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-100">
             <Building2 className="text-white" size={22} />
           </div>
           {!collapsed && (
@@ -89,14 +90,14 @@ export default function Sidebar() {
                   onClick={() => setMobileOpen(false)}
                   className={`group flex items-center rounded-xl px-3 py-2.5 transition-all duration-200 ${
                     active 
-                      ? "bg-indigo-50 text-indigo-600 shadow-sm shadow-indigo-50/50" 
+                      ? "bg-blue-50 text-blue-600 shadow-sm shadow-blue-50/50" 
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                   } ${collapsed ? "justify-center" : "gap-3"}`}
                   title={collapsed ? item.label : undefined}
                 >
                   <Icon 
                     size={20} 
-                    className={`shrink-0 transition-colors ${active ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"}`} 
+                    className={`shrink-0 transition-colors ${active ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"}`} 
                   />
                   {!collapsed && (
                     <span className={`truncate text-[13px] font-semibold tracking-tight`}>
@@ -118,8 +119,13 @@ export default function Sidebar() {
 
       {/* 4. Footer / User Profile */}
       <div className="border-t border-slate-50 p-4">
-        <div className={`flex items-center gap-3 rounded-xl p-2 transition hover:bg-slate-50 cursor-pointer ${collapsed ? "justify-center" : ""}`}>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-[11px] font-bold text-white">
+        <Link
+          href="/portal/settings"
+          onClick={() => setMobileOpen(false)}
+          className={`flex items-center gap-3 rounded-xl p-2 transition hover:bg-slate-50 ${collapsed ? "justify-center" : ""}`}
+          title={collapsed ? "Settings" : undefined}
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-[11px] font-bold text-white">
             {userInitials}
           </div>
           {!collapsed && (
@@ -131,7 +137,7 @@ export default function Sidebar() {
               <ChevronDown size={14} className="text-slate-400" />
             </div>
           )}
-        </div>
+        </Link>
         
         {/* Logout Button */}
         <button

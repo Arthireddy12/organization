@@ -117,7 +117,7 @@ export default function CreateOrganizationForm() {
   }
 
   return (
-    <div className="bg-[#F8FAFC] min-h-screen py-10 px-6 font-sans">
+    <div className="min-h-screen py-10 px-6 font-sans">
       <div className="max-w-5xl mx-auto">
         
         {/* Breadcrumbs & Title */}
