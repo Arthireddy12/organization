@@ -51,6 +51,7 @@ export default function OrganizationSettingsClient({
   initialAutoDeactivateDate,
 }: OrganizationSettingsProps) {
   const router = useRouter();
+  const todayDate = getTodayDateInputValue();
   const [userLimit, setUserLimit] = useState(initialUserLimit);
   const [isActive, setIsActive] = useState(initialIsActive);
   const [startDate, setStartDate] = useState(
@@ -124,6 +125,12 @@ export default function OrganizationSettingsClient({
 
   async function saveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (autoDeactivateDate && autoDeactivateDate < todayDate) {
+      setError("Auto deactivate / subscription end date cannot be before today.");
+      setMessage(null);
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -277,6 +284,7 @@ export default function OrganizationSettingsClient({
                 <input
                   id="autoDeactivateDate"
                   type="date"
+                  min={todayDate}
                   value={autoDeactivateDate}
                   onChange={(event) => setAutoDeactivateDate(event.target.value)}
                   className={formInputClass}
@@ -353,4 +361,12 @@ export default function OrganizationSettingsClient({
         </section>
     </div>
   );
+}
+
+function getTodayDateInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }

@@ -15,18 +15,27 @@ import {
   CreditCard, 
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 
 export type OrganizationListItem = {
   id: string;
   name: string;
   email?: string; 
+  phone: string;
+  industry: string;
+  address: string;
+  adminName: string;
+  adminEmail: string;
+  adminPhone: string;
+  adminDesignation: string;
   slug: string;
   planName: string;
   userLimit: number;
   userCount: number;
   isActive: boolean;
   status?: 'Active' | 'Inactive' | 'Trial'; 
+  startDate: string | null;
   createdAt: string;
   autoDeactivateDate: string | null;
   moduleAccess: string[];
@@ -37,12 +46,42 @@ type OrganizationsClientProps = {
 };
 
 export default function OrganizationsClient({ initialOrganizations }: OrganizationsClientProps) {
-  const [organizations] = useState(initialOrganizations);
+  const [organizations, setOrganizations] = useState(initialOrganizations);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const filteredOrganizations = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return organizations.filter((org) => {
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" ? org.isActive : !org.isActive);
+
+      if (!matchesStatus) return false;
+      if (!query) return true;
+
+      return [
+        org.name,
+        org.email,
+        org.slug,
+        org.phone,
+        org.industry,
+        org.adminName,
+        org.adminEmail,
+      ]
+        .filter(Boolean)
+        .some((value) => value?.toLowerCase().includes(query));
+    });
+  }, [organizations, searchQuery, statusFilter]);
 
   const stats = useMemo(() => {
-    const totalOrganizations = organizations.length;
-    const activeOrganizations = organizations.filter((org) => org.isActive).length;
-    const totalUsers = organizations.reduce((sum, org) => sum + org.userCount, 0);
+    const totalOrganizations = filteredOrganizations.length;
+    const activeOrganizations = filteredOrganizations.filter((org) => org.isActive).length;
+    const totalUsers = filteredOrganizations.reduce((sum, org) => sum + org.userCount, 0);
 
     return [
       {
@@ -74,7 +113,35 @@ export default function OrganizationsClient({ initialOrganizations }: Organizati
         bg: "bg-rose-50",
       },
     ];
-  }, [organizations]);
+  }, [filteredOrganizations]);
+
+  async function deleteOrganization(org: OrganizationListItem) {
+    const confirmed = window.confirm(`Delete "${org.name}"? This action cannot be undone.`);
+    if (!confirmed) {
+      setOpenActionMenuId(null);
+      return;
+    }
+
+    setDeletingId(org.id);
+    setOpenActionMenuId(null);
+
+    try {
+      const response = await fetch(`/api/portal/${org.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string; details?: string };
+        throw new Error(payload.error || payload.details || "Failed to delete organization");
+      }
+
+      setOrganizations((current) => current.filter((item) => item.id !== org.id));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <div className="min-h-screen font-sans text-slate-900">
@@ -103,17 +170,51 @@ export default function OrganizationsClient({ initialOrganizations }: Organizati
             <h2 className="font-bold text-lg">Organizations</h2>
             <p className="text-xs text-slate-500 font-medium">View and manage all your organizations</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap justify-end gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input 
                 placeholder="Search organization..." 
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
                 className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs w-64"
               />
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
-              <Filter size={16} /> Filter
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowFilters((open) => !open)}
+                className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                <Filter size={16} />
+                {statusFilter === "all" ? "Filter" : statusFilter === "active" ? "Active" : "Inactive"}
+              </button>
+              {showFilters ? (
+                <div className="absolute right-0 top-11 z-20 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-200/70">
+                  {[
+                    { label: "All", value: "all" },
+                    { label: "Active", value: "active" },
+                    { label: "Inactive", value: "inactive" },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(item.value as "all" | "active" | "inactive");
+                        setShowFilters(false);
+                      }}
+                      className={`block w-full px-4 py-2 text-left text-xs font-bold transition ${
+                        statusFilter === item.value
+                          ? "bg-indigo-50 text-indigo-700"
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <Link href="/portal/create" className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100">
               <Plus size={16} /> Add Organization
             </Link>
@@ -134,7 +235,9 @@ export default function OrganizationsClient({ initialOrganizations }: Organizati
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {organizations.map((org) => (
+              {filteredOrganizations.map((org, index) => {
+                const openUpward = index >= Math.max(filteredOrganizations.length - 2, 0);
+                return (
                 <tr key={org.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-8 py-5">
                     <div className="flex items-center gap-4">
@@ -172,26 +275,68 @@ export default function OrganizationsClient({ initialOrganizations }: Organizati
                   </td>
                   <td className="px-6 py-5">
                     <div className="flex items-center justify-center gap-1">
-                      <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
-                        <Eye size={18} />
-                      </button>
-                      <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
-                        <Edit3 size={18} />
-                      </button>
-                      <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenActionMenuId((current) => (current === org.id ? null : org.id))
+                          }
+                          className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors"
+                          aria-label={`More actions for ${org.name}`}
+                        >
                         <MoreVertical size={18} />
-                      </button>
+                        </button>
+                        {openActionMenuId === org.id ? (
+                          <div
+                            className={`absolute right-0 z-20 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 text-left shadow-lg shadow-slate-200/70 ${
+                              openUpward ? "bottom-10" : "top-10"
+                            }`}
+                          >
+                            <Link
+                              href={`/portal/create?id=${org.id}&mode=view`}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
+                            >
+                              <Eye size={15} /> View
+                            </Link>
+                            <Link
+                              href={`/portal/create?id=${org.id}&mode=edit`}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
+                            >
+                              <Edit3 size={15} /> Edit
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => deleteOrganization(org)}
+                              disabled={deletingId === org.id}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 disabled:opacity-60"
+                            >
+                              <X size={15} /> {deletingId === org.id ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
+              {filteredOrganizations.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-8 py-12 text-center text-sm font-semibold text-slate-500">
+                    No organizations match your search or filter.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
 
         {/* Table Footer / Pagination */}
         <div className="px-8 py-5 border-t border-slate-100 flex justify-between items-center text-[11px] font-bold text-slate-400">
-          <p>Showing 1 to {organizations.length} of {organizations.length} organizations</p>
+          <p>
+            Showing {filteredOrganizations.length ? 1 : 0} to {filteredOrganizations.length} of{" "}
+            {organizations.length} organizations
+          </p>
           <div className="flex items-center gap-2">
             <button className="p-1 border border-slate-200 rounded-md hover:bg-slate-50"><ChevronLeft size={16}/></button>
             <button className="w-7 h-7 flex items-center justify-center bg-indigo-600 text-white rounded-md">1</button>
@@ -208,6 +353,7 @@ export default function OrganizationsClient({ initialOrganizations }: Organizati
           </div>
         </div>
       </div>
+
     </div>
   );
 }
