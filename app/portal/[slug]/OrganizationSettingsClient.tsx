@@ -31,7 +31,8 @@ const moduleOptions = [
   "Leave",
   "Payroll",
   "Recruitment",
-  "Performance",
+  "Performance & Goals",
+  "Helpdesk",
   "Shift",
 ] as const;
 

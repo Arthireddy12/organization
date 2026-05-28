@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionFromCookie } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import {
+  type ModuleAccessObject,
   normalizeModuleAccessToArray,
   normalizeModuleAccessToObject,
 } from "@/lib/organization";
@@ -9,7 +10,7 @@ import {
 type UpdateOrgBody = {
   planName?: string;
   userLimit?: number;
-  moduleAccess?: string[] | Record<string, boolean>;
+  moduleAccess?: string[] | Record<string, boolean> | ModuleAccessObject;
   isActive?: boolean;
   startDate?: string | null;
   autoDeactivateDate?: string | null;

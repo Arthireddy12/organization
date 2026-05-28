@@ -7,7 +7,7 @@ const moduleGroups = [
     modules: ["Payroll Policy Engine", "Payroll Generation"],
   },
   { name: "Settings", modules: [] },
-  { name: "Support", modules: ["Performance and Goals"] },
+  { name: "Support", modules: ["Helpdesk", "Performance & Goals"] },
   {
     name: "Recruitment Module",
     modules: ["Candidates", "Recruitment / Jobs"],
@@ -16,7 +16,6 @@ const moduleGroups = [
     name: "Attendance Module",
     modules: ["Attendance", "Analytics"],
   },
-  { name: "Goals Management", modules: ["Goals"] },
   {
     name: "Leave Module",
     modules: [
@@ -46,6 +45,9 @@ const moduleGroups = [
 ] as const;
 
 const legacyModuleOptions = [
+  "Performance",
+  "Goals",
+  "Goals Management",
   "Projects",
   "HR Payroll Portal",
   "Projects Review",
@@ -75,6 +77,18 @@ export type ModuleAccessObject = {
 
 function isAllowedModule(moduleName: string) {
   return moduleOptions.includes(moduleName as typeof moduleOptions[number]);
+}
+
+function getCanonicalModuleName(moduleName: string) {
+  if (
+    moduleName === "Performance" ||
+    moduleName === "Goals" ||
+    moduleName === "Goals Management"
+  ) {
+    return "Performance & Goals";
+  }
+
+  return moduleName;
 }
 
 function normalizeGroupedModuleAccess(value: unknown): ModuleAccessObject | null {
@@ -142,30 +156,34 @@ function moduleAccessObjectFromEnabledNames(enabledModules: Set<string>): Module
  * same grouped shape the UI shows, while reads can still flatten either format.
  */
 export function normalizeModuleAccessToArray(value: unknown): string[] {
+  const normalizedModules = new Set<string>();
   const groupedAccess = normalizeGroupedModuleAccess(value);
   if (groupedAccess) {
-    return groupedAccess.groups.reduce<string[]>((modules, group) => {
-      if (group.enabled) modules.push(group.name);
+    groupedAccess.groups.forEach((group) => {
+      if (group.enabled) normalizedModules.add(getCanonicalModuleName(group.name));
       group.modules.forEach((module) => {
-        if (module.enabled) modules.push(module.name);
+        if (module.enabled) normalizedModules.add(getCanonicalModuleName(module.name));
       });
-      return modules;
-    }, []);
+    });
+    return Array.from(normalizedModules);
   }
 
   if (Array.isArray(value)) {
-    return value.filter(
-      (module): module is string => typeof module === "string" && isAllowedModule(module),
-    );
+    value.forEach((module) => {
+      if (typeof module === "string" && isAllowedModule(module)) {
+        normalizedModules.add(getCanonicalModuleName(module));
+      }
+    });
+    return Array.from(normalizedModules);
   }
 
   if (value && typeof value === "object" && !Array.isArray(value)) {
-    return Object.entries(value).reduce<string[]>((modules, [key, value]) => {
+    Object.entries(value).forEach(([key, value]) => {
       if (isAllowedModule(key) && value === true) {
-        modules.push(key);
+        normalizedModules.add(getCanonicalModuleName(key));
       }
-      return modules;
-    }, []);
+    });
+    return Array.from(normalizedModules);
   }
 
   return [];
@@ -173,11 +191,15 @@ export function normalizeModuleAccessToArray(value: unknown): string[] {
 
 export function normalizeModuleAccessToObject(value: unknown): ModuleAccessObject {
   const groupedAccess = normalizeGroupedModuleAccess(value);
-  if (groupedAccess) return groupedAccess;
+  if (groupedAccess) {
+    return moduleAccessObjectFromEnabledNames(new Set(normalizeModuleAccessToArray(value)));
+  }
 
   if (Array.isArray(value)) {
     const enabledModules = new Set(
-      value.filter((module): module is string => typeof module === "string" && isAllowedModule(module)),
+      value
+        .filter((module): module is string => typeof module === "string" && isAllowedModule(module))
+        .map(getCanonicalModuleName),
     );
     return moduleAccessObjectFromEnabledNames(enabledModules);
   }
@@ -185,7 +207,7 @@ export function normalizeModuleAccessToObject(value: unknown): ModuleAccessObjec
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const enabledModules = Object.entries(value).reduce<Set<string>>((modules, [key, moduleValue]) => {
       if (isAllowedModule(key) && moduleValue === true) {
-        modules.add(key);
+        modules.add(getCanonicalModuleName(key));
       }
       return modules;
     }, new Set<string>());

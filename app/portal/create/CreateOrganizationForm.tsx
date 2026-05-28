@@ -21,7 +21,7 @@ const moduleGroups = [
     modules: ["Payroll Policy Engine", "Payroll Generation"],
   },
   { name: "Settings", modules: [] },
-  { name: "Support", modules: ["Performance and Goals"] },
+  { name: "Support", modules: ["Helpdesk", "Performance & Goals"] },
   {
     name: "Recruitment Module",
     modules: ["Candidates", "Recruitment / Jobs"],
@@ -30,7 +30,6 @@ const moduleGroups = [
     name: "Attendance Module",
     modules: ["Attendance", "Analytics"],
   },
-  { name: "Goals Management", modules: ["Goals"] },
   {
     name: "Leave Module",
     modules: [

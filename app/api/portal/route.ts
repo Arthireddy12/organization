@@ -3,6 +3,7 @@ import { getSessionFromCookie } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import {
   ensureOrganizationSlugs,
+  type ModuleAccessObject,
   normalizeModuleAccessToArray,
   normalizeModuleAccessToObject,
 } from "@/lib/organization";
@@ -16,7 +17,7 @@ type CreateOrganizationBody = {
   address?: string;
   adminPhone?: string;
   designation?: string;
-  moduleAccess?: string[] | Record<string, boolean>;
+  moduleAccess?: string[] | Record<string, boolean> | ModuleAccessObject;
   autoDeactivateDate?: string | null;
   superAdminName?: string;
   superAdminEmail?: string;

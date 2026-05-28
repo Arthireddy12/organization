@@ -15,7 +15,7 @@ type UpdatePortalBody = {
   designation?: string;
   planName?: string;
   userLimit?: number;
-  moduleAccess?: string[] | Record<string, boolean>;
+  moduleAccess?: string[] | Record<string, boolean> | ModuleAccessObject;
   isActive?: boolean;
   startDate?: string | null;
   autoDeactivateDate?: string | null;
