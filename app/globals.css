@@ -19,10 +19,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Subtle focus ring for accessibility */
-:focus-visible {
+/* Subtle focus ring for keyboard navigation on non-input controls */
+:focus-visible:not(input):not(textarea):not(select) {
   outline: 2px solid rgb(37 99 235 / 0.45);
   outline-offset: 2px;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+textarea:focus,
+select:focus {
+  border-color: rgb(226 232 240);
+  outline: none;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
 }
 
 /* Sidebar slide-in animation (mobile) */

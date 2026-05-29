@@ -5,7 +5,6 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
-  MoreVertical,
   Search,
   UserRoundPlus,
   Users,
@@ -142,17 +141,12 @@ export default function UsersClient({ initialOrganizations }: UsersClientProps) 
           </div>
         </PanelHeader>
 
-        <DataTable minWidth="980px">
+        <DataTable minWidth="680px">
           <DataTableHead>
             <tr>
               <DataTableHeaderCell>Organization</DataTableHeaderCell>
-              <DataTableHeaderCell>Plan</DataTableHeaderCell>
               <DataTableHeaderCell className="text-center">Users</DataTableHeaderCell>
-              <DataTableHeaderCell className="text-center">
-                Employees
-              </DataTableHeaderCell>
               <DataTableHeaderCell>Status</DataTableHeaderCell>
-              <DataTableHeaderCell className="text-right">Action</DataTableHeaderCell>
             </tr>
           </DataTableHead>
           <DataTableBody>
@@ -196,16 +190,8 @@ export default function UsersClient({ initialOrganizations }: UsersClientProps) 
                         </div>
                       </div>
                     </DataTableCell>
-                    <DataTableCell>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                        {organization.planName}
-                      </span>
-                    </DataTableCell>
                     <DataTableCell className="text-center font-semibold text-slate-800">
                       {organization.userCount}
-                    </DataTableCell>
-                    <DataTableCell className="text-center font-semibold text-slate-800">
-                      {organization.employeeCount}
                     </DataTableCell>
                     <DataTableCell>
                       <span
@@ -219,20 +205,11 @@ export default function UsersClient({ initialOrganizations }: UsersClientProps) 
                         {organization.isActive ? "Active" : "Inactive"}
                       </span>
                     </DataTableCell>
-                    <DataTableCell className="text-right">
-                      <Button
-                        aria-label={`Actions for ${organization.name}`}
-                        size="icon"
-                        variant="ghost"
-                      >
-                        <MoreVertical size={18} />
-                      </Button>
-                    </DataTableCell>
                   </DataTableRow>
 
                   {expanded && (
                     <DataTableRow className="hover:bg-white">
-                      <DataTableCell colSpan={6} className="bg-slate-50/70 p-4">
+                      <DataTableCell colSpan={3} className="bg-slate-50/70 p-4">
                         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
                             <div>
@@ -313,7 +290,7 @@ export default function UsersClient({ initialOrganizations }: UsersClientProps) 
             {visibleOrganizations.length === 0 && (
               <DataTableRow>
                 <DataTableCell
-                  colSpan={6}
+                  colSpan={3}
                   className="py-12 text-center text-sm text-slate-500"
                 >
                   No organizations or users match your search.

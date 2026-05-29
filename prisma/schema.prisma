@@ -83,6 +83,14 @@ model User {
 model Organization {
   id   String @id @default(auto()) @map("_id") @db.ObjectId
   name String @unique
+  email String?
+  phone String?
+  industry String?
+  address String?
+  adminName String?
+  adminEmail String?
+  adminPhone String?
+  adminDesignation String?
   slug String? @unique
 
   //a
@@ -92,11 +100,11 @@ model Organization {
   startDate          DateTime? @db.Date
   autoDeactivateDate DateTime? @db.Date
   moduleAccess       Json?
-  apiAccess          Boolean   @default(false)
-  customBranding     Boolean   @default(false)
-  payrollEnabled     Boolean   @default(true)
-  attendanceEnabled  Boolean   @default(true)
-  recruitmentEnabled Boolean   @default(false)
+  apiAccess          Boolean?
+  customBranding     Boolean?
+  payrollEnabled     Boolean?
+  attendanceEnabled  Boolean?
+  recruitmentEnabled Boolean?
   storageLimitGb     Int?
   notes              String?
 

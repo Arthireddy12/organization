@@ -1,6 +1,6 @@
 /** Shared Tailwind class strings for auth and portal forms */
 export const formInputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-200 focus:ring-0 focus:outline-none";
 
 export const formLabelClass =
   "mb-2 block text-xs font-bold uppercase text-slate-600";

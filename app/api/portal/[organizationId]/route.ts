@@ -4,15 +4,38 @@ import { NextResponse } from "next/server";
 import { type ModuleAccessObject, normalizeModuleAccessToObject } from "@/lib/organization";
 
 type UpdatePortalBody = {
+  organizationName?: string;
+  organizationEmail?: string;
+  phoneNumber?: string;
+  industry?: string;
+  address?: string;
+  adminName?: string;
+  adminEmail?: string;
+  adminPhone?: string;
+  designation?: string;
   planName?: string;
   userLimit?: number;
-  moduleAccess?: string[] | Record<string, boolean>;
+  moduleAccess?: string[] | Record<string, boolean> | ModuleAccessObject;
   isActive?: boolean;
   startDate?: string | null;
   autoDeactivateDate?: string | null;
   storageLimitGb?: number | null;
   notes?: string;
 };
+
+function getTodayDateInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isPastDateInput(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? value < getTodayDateInputValue()
+    : new Date(value).getTime() < new Date(getTodayDateInputValue()).getTime();
+}
 
 export async function PATCH(
   request: Request,
@@ -28,6 +51,15 @@ export async function PATCH(
     const body = (await request.json()) as UpdatePortalBody;
 
     const updates: {
+      name?: string;
+      email?: string | null;
+      phone?: string | null;
+      industry?: string | null;
+      address?: string | null;
+      adminName?: string | null;
+      adminEmail?: string | null;
+      adminPhone?: string | null;
+      adminDesignation?: string | null;
       planName?: string;
       userLimit?: number;
       moduleAccess?: ModuleAccessObject;
@@ -40,6 +72,42 @@ export async function PATCH(
     } = {
       updatedAt: new Date(),
     };
+
+    if (typeof body.organizationName === "string" && body.organizationName.trim()) {
+      updates.name = body.organizationName.trim();
+    }
+
+    if (typeof body.organizationEmail === "string") {
+      updates.email = body.organizationEmail.trim().toLowerCase() || null;
+    }
+
+    if (typeof body.phoneNumber === "string") {
+      updates.phone = body.phoneNumber.trim() || null;
+    }
+
+    if (typeof body.industry === "string") {
+      updates.industry = body.industry.trim() || null;
+    }
+
+    if (typeof body.address === "string") {
+      updates.address = body.address.trim() || null;
+    }
+
+    if (typeof body.adminName === "string") {
+      updates.adminName = body.adminName.trim() || null;
+    }
+
+    if (typeof body.adminEmail === "string") {
+      updates.adminEmail = body.adminEmail.trim().toLowerCase() || null;
+    }
+
+    if (typeof body.adminPhone === "string") {
+      updates.adminPhone = body.adminPhone.trim() || null;
+    }
+
+    if (typeof body.designation === "string") {
+      updates.adminDesignation = body.designation.trim() || null;
+    }
 
     if (typeof body.planName === "string" && body.planName.trim()) {
       updates.planName = body.planName.trim();
@@ -79,12 +147,19 @@ export async function PATCH(
       body.autoDeactivateDate
     ) {
       const parsedAutoDeactivateDate = new Date(body.autoDeactivateDate);
-      if (!Number.isNaN(parsedAutoDeactivateDate.getTime())) {
-        updates.autoDeactivateDate = parsedAutoDeactivateDate;
-        if (parsedAutoDeactivateDate.getTime() <= Date.now()) {
-          updates.isActive = false;
-        }
+      if (Number.isNaN(parsedAutoDeactivateDate.getTime())) {
+        return NextResponse.json(
+          { error: "Invalid subscription end date" },
+          { status: 400 },
+        );
       }
+      if (isPastDateInput(body.autoDeactivateDate)) {
+        return NextResponse.json(
+          { error: "Subscription end date cannot be before today" },
+          { status: 400 },
+        );
+      }
+      updates.autoDeactivateDate = parsedAutoDeactivateDate;
     }
 
     if (body.storageLimitGb === null) {
