@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { findUserByEmail } from "@/app/repositories/user";
 import { compare } from "bcryptjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -22,16 +22,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        name: true,
-        password: true,
-      },
-    });
+    const user = await findUserByEmail(email) as {
+      id: string;
+      email: string;
+      role: string;
+      name: string;
+      password: string;
+    } | null;
 
     if (!user) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });

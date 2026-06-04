@@ -1,5 +1,8 @@
 import { getSessionFromCookie } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import {
+  findOrganizationBySlug,
+  updateOrganizationById,
+} from "@/app/repositories/organization";
 import { notFound, redirect } from "next/navigation";
 import OrganizationSettingsClient from "./OrganizationSettingsClient";
 import {
@@ -24,9 +27,7 @@ export default async function OrganizationSettingsPage({ params }: PageProps) {
 
   const { slug } = await params;
 
-  const organization = await prisma.organization.findUnique({
-    where: { slug },
-  });
+  const organization = await findOrganizationBySlug(slug);
 
   if (!organization) {
     notFound();
@@ -40,13 +41,13 @@ export default async function OrganizationSettingsPage({ params }: PageProps) {
     org.isActive &&
     org.autoDeactivateDate.getTime() <= now.getTime()
   ) {
-    org = await prisma.organization.update({
-      where: { id: organization.id },
-      data: {
+    org = await updateOrganizationById(
+      organization.id,
+      {
         isActive: false,
         updatedAt: now,
       },
-    });
+    ) ?? organization;
   }
 
   const userLimit = org.userLimit ?? 25;

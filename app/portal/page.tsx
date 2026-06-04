@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+import { listInvoices } from "@/app/repositories/invoice";
+import { listOrganizationsWithUserCounts } from "@/app/repositories/organization";
 import { getSessionFromCookie } from "@/lib/auth";
 import PortalClient, { type InvoicePortalApi, type OrganizationPortalApi } from "./PortalClient";
 import { redirect } from "next/navigation";
@@ -6,6 +7,29 @@ import {
   ensureOrganizationSlugs,
   normalizeModuleAccessToArray,
 } from "@/lib/organization";
+
+type PlainOrganization = {
+  id: string;
+  name: string;
+  email?: string | null;
+  slug?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  planName?: string | null;
+  userLimit?: number | null;
+  moduleAccess?: unknown;
+  isActive: boolean;
+  startDate?: Date | null;
+  autoDeactivateDate?: Date | null;
+};
+
+type PlainInvoice = {
+  id: string;
+  invoiceNumber: string;
+  organizationName: string;
+  finalAmount: number;
+  createdAt: Date;
+};
 
 export default async function PortalPage() {
   const session = await getSessionFromCookie();
@@ -18,29 +42,19 @@ export default async function PortalPage() {
 
   await ensureOrganizationSlugs();
 
-  const [organizations, invoices] = await Promise.all([
-    prisma.organization.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        users: {
-          select: { id: true },
-        },
-      },
-    }),
-    prisma.invoice.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
+  const [plainOrganizations, plainInvoices] = await Promise.all([
+    listOrganizationsWithUserCounts() as Promise<Array<PlainOrganization & { userCount: number }>>,
+    listInvoices(100) as Promise<PlainInvoice[]>,
   ]);
 
-  const initialOrganizations: OrganizationPortalApi[] = organizations.map((org) => ({
+  const initialOrganizations: OrganizationPortalApi[] = await Promise.all(plainOrganizations.map(async (org) => ({
     id: org.id,
     name: org.name,
     email: org.email,
     slug: org.slug ?? "",
     createdAt: org.createdAt.toISOString(),
     updatedAt: org.updatedAt.toISOString(),
-    userCount: org.users.length,
+    userCount: org.userCount,
     portal: {
       id: org.id,
       planName: org.planName ?? null,
@@ -50,9 +64,9 @@ export default async function PortalPage() {
     },
     startDate: org.startDate?.toISOString() ?? null,
     autoDeactivateDate: org.autoDeactivateDate?.toISOString() ?? null,
-  }));
+  })));
 
-  const initialInvoices: InvoicePortalApi[] = invoices.map((invoice) => ({
+  const initialInvoices: InvoicePortalApi[] = plainInvoices.map((invoice) => ({
     id: invoice.id,
     invoiceNumber: invoice.invoiceNumber,
     organizationName: invoice.organizationName,

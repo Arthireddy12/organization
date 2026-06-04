@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { createInvoice, listInvoices } from "@/app/repositories/invoice";
 import { NextResponse } from "next/server";
 
 function getErrorMessage(error: unknown) {
@@ -60,8 +60,7 @@ export async function POST(req: Request) {
       taxableAmount + gstAmount + sgstAmount;
 
     // Create Invoice
-    const invoice = await prisma.invoice.create({
-      data: {
+    const invoice = await createInvoice({
         invoiceNumber,
         organizationName,
         mobileNumber,
@@ -73,7 +72,6 @@ export async function POST(req: Request) {
         sgst,
         taxableAmount,
         finalAmount,
-      },
     });
 
     return NextResponse.json(
@@ -97,11 +95,7 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
-    const invoices = await prisma.invoice.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const invoices = await listInvoices();
 
     return NextResponse.json(
       {

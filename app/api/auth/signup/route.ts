@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import { roles } from "@/lib/database/constants";
+import { createUser, userExistsByEmail } from "@/app/repositories/user";
 import { getAuthCookieName, signSessionToken } from "@/lib/auth";
-import { Role } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -19,10 +19,9 @@ export async function POST(request: Request) {
     const email = body.email?.trim().toLowerCase();
     const password = body.password ?? "";
     const requestedRole = body.role?.trim();
-    const role =
-      requestedRole && Object.values(Role).includes(requestedRole as Role)
-        ? (requestedRole as Role)
-        : Role.SUPER_ADMIN;
+    const role = requestedRole && roles.includes(requestedRole as typeof roles[number])
+      ? requestedRole
+      : "SUPER_ADMIN";
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -38,10 +37,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const existing = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true },
-    });
+    const existing = await userExistsByEmail(email);
 
     if (existing) {
       return NextResponse.json(
@@ -53,21 +49,13 @@ export async function POST(request: Request) {
     const now = new Date();
     const passwordHash = await hash(password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: passwordHash,
-        role,
-        createdAt: now,
-      },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        name: true,
-      },
-    });
+    const user = await createUser({
+      name,
+      email,
+      password: passwordHash,
+      role,
+      createdAt: now,
+    }) as { id: string; email: string; role: string; name: string };
 
     const token = await signSessionToken({
       userId: user.id,

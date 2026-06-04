@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getDashboardStats } from "@/app/repositories/dashboard";
 import { getSessionFromCookie } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [
+    const {
       totalOrganizations,
       activeOrganizations,
       totalUsers,
@@ -17,27 +17,9 @@ export async function GET() {
       totalEmployees,
       totalTeams,
       totalShifts,
-    ] = await Promise.all([
-      prisma.organization.count(),
-      prisma.organization.count({ where: { isActive: true } }),
-      prisma.user.count(),
-      prisma.department.count(),
-      prisma.employee.count(),
-      prisma.team.count(),
-      prisma.shift.count(),
-    ]);
-
-    // Get user distribution by role
-    const usersByRole = await prisma.user.groupBy({
-      by: ["role"],
-      _count: { id: true },
-    });
-
-    // Get organization plan distribution
-    const orgsByPlan = await prisma.organization.groupBy({
-      by: ["planName"],
-      _count: { id: true },
-    });
+      usersByRole,
+      orgsByPlan,
+    } = await getDashboardStats();
 
     return NextResponse.json({
       organizations: {
@@ -48,8 +30,8 @@ export async function GET() {
       users: {
         total: totalUsers,
         byRole: usersByRole.map((r) => ({
-          role: r.role,
-          count: r._count.id,
+          role: r._id,
+          count: r.count,
         })),
       },
       departments: {
@@ -66,8 +48,8 @@ export async function GET() {
       },
       plans: {
         byName: orgsByPlan.map((p) => ({
-          name: p.planName ?? "Starter",
-          count: p._count.id,
+          name: p._id ?? "Starter",
+          count: p.count,
         })),
       },
     });
