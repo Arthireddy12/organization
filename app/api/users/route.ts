@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import { roles } from "@/lib/database/constants";
+import { listUsers } from "@/app/repositories/user";
 import { getSessionFromCookie } from "@/lib/auth";
-import { Role } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -13,30 +13,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get("organizationId");
     const role = searchParams.get("role");
-    const roleFilter = role && Object.values(Role).includes(role as Role)
-      ? (role as Role)
+    const roleFilter = role && roles.includes(role as typeof roles[number])
+      ? role
       : undefined;
 
-    const users = await prisma.user.findMany({
-      where: {
-        ...(organizationId ? { organizationId } : {}),
-        ...(roleFilter ? { role: roleFilter } : {}),
-      },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        organizationId: true,
-        organization: {
-          select: { id: true, name: true },
-        },
-      },
-    });
-
-    return NextResponse.json(users);
+    return NextResponse.json(await listUsers({ organizationId, role: roleFilter }));
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch users", details: String(error) },

@@ -1,5 +1,5 @@
 import { getSessionFromCookie } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { findUserById } from "@/app/repositories/user";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -9,10 +9,7 @@ export async function GET() {
   }
 
   // Fetch full user info including name from the database
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { id: true, name: true, email: true, role: true },
-  });
+  const user = await findUserById(session.userId, "name email role");
 
   if (!user) {
     return NextResponse.json({ authenticated: false });

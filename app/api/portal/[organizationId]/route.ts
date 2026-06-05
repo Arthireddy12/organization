@@ -1,4 +1,8 @@
-import { prisma } from "@/lib/prisma";
+import {
+  deleteOrganizationById,
+  organizationExistsById,
+  updateOrganizationById,
+} from "@/app/repositories/organization";
 import { getSessionFromCookie } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { type ModuleAccessObject, normalizeModuleAccessToObject } from "@/lib/organization";
@@ -175,19 +179,13 @@ export async function PATCH(
       updates.notes = body.notes;
     }
 
-    const existing = await prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { id: true },
-    });
+    const existing = await organizationExistsById(organizationId);
 
     if (!existing) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
-    const updated = await prisma.organization.update({
-      where: { id: organizationId },
-      data: updates,
-    });
+    const updated = await updateOrganizationById(organizationId, updates);
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -210,9 +208,9 @@ export async function DELETE(
 
     const { organizationId } = await context.params;
 
-    await prisma.organization.delete({
-      where: { id: organizationId },
-    });
+    if (!(await deleteOrganizationById(organizationId))) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    }
 
     return NextResponse.json({ message: "Organization deleted" });
   } catch (error) {

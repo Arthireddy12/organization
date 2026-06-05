@@ -1,0 +1,30 @@
+import type { BaseDocument } from "./shared";
+
+export type OrganizationDocument = BaseDocument & {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  industry?: string | null;
+  address?: string | null;
+  adminName?: string | null;
+  adminEmail?: string | null;
+  adminPhone?: string | null;
+  adminDesignation?: string | null;
+  slug?: string | null;
+  tenantDatabase?: string | null;
+  planName?: string | null;
+  userLimit?: number | null;
+  isActive: boolean;
+  startDate?: Date | null;
+  autoDeactivateDate?: Date | null;
+  moduleAccess?: unknown;
+  apiAccess?: boolean | null;
+  customBranding?: boolean | null;
+  payrollEnabled?: boolean | null;
+  attendanceEnabled?: boolean | null;
+  recruitmentEnabled?: boolean | null;
+  storageLimitGb?: number | null;
+  notes?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};

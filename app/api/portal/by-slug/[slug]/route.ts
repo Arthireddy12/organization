@@ -1,4 +1,10 @@
-import { prisma } from "@/lib/prisma";
+import {
+  deleteOrganizationBySlug,
+  findOrganizationBySlug,
+  getOrganizationStats,
+  organizationExistsBySlug,
+  updateOrganizationBySlug,
+} from "@/app/repositories/organization";
 import { getSessionFromCookie } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import {
@@ -16,6 +22,27 @@ type UpdateOrgBody = {
   autoDeactivateDate?: string | null;
   storageLimitGb?: number | null;
   notes?: string;
+};
+
+type OrganizationRecord = {
+  id: string;
+  name: string;
+  slug?: string | null;
+  planName?: string | null;
+  userLimit?: number | null;
+  isActive: boolean;
+  startDate?: Date | null;
+  autoDeactivateDate?: Date | null;
+  moduleAccess?: unknown;
+  storageLimitGb?: number | null;
+  apiAccess?: boolean | null;
+  customBranding?: boolean | null;
+  payrollEnabled?: boolean | null;
+  attendanceEnabled?: boolean | null;
+  recruitmentEnabled?: boolean | null;
+  notes?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 function getTodayDateInputValue() {
@@ -44,19 +71,7 @@ export async function GET(
 
     const { slug } = await context.params;
 
-    const organization = await prisma.organization.findUnique({
-      where: { slug },
-      include: {
-        _count: {
-          select: {
-            users: true,
-            departments: true,
-            employees: true,
-            teams: true,
-          },
-        },
-      },
-    });
+    const organization = await findOrganizationBySlug(slug) as OrganizationRecord | null;
 
     if (!organization) {
       return NextResponse.json(
@@ -84,12 +99,7 @@ export async function GET(
       notes: organization.notes,
       createdAt: organization.createdAt,
       updatedAt: organization.updatedAt,
-      stats: {
-        users: organization._count.users,
-        departments: organization._count.departments,
-        employees: organization._count.employees,
-        teams: organization._count.teams,
-      },
+      stats: await getOrganizationStats(organization.id),
     });
   } catch (error) {
     return NextResponse.json(
@@ -112,10 +122,7 @@ export async function PATCH(
     const { slug } = await context.params;
     const body = (await request.json()) as UpdateOrgBody;
 
-    const existing = await prisma.organization.findUnique({
-      where: { slug },
-      select: { id: true },
-    });
+    const existing = await organizationExistsBySlug(slug);
 
     if (!existing) {
       return NextResponse.json(
@@ -181,10 +188,7 @@ export async function PATCH(
       updates.notes = body.notes;
     }
 
-    const updated = await prisma.organization.update({
-      where: { slug },
-      data: updates,
-    });
+    const updated = await updateOrganizationBySlug(slug, updates);
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -207,10 +211,7 @@ export async function DELETE(
 
     const { slug } = await context.params;
 
-    const existing = await prisma.organization.findUnique({
-      where: { slug },
-      select: { id: true },
-    });
+    const existing = await organizationExistsBySlug(slug);
 
     if (!existing) {
       return NextResponse.json(
@@ -219,9 +220,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.organization.delete({
-      where: { slug },
-    });
+    await deleteOrganizationBySlug(slug);
 
     return NextResponse.json({ message: "Organization deleted" });
   } catch (error) {

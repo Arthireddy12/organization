@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { backfillOrganizationSlugs } from "@/app/repositories/organization";
 
 const moduleGroups = [
   { name: "Dashboard", modules: [] },
@@ -226,27 +226,8 @@ export async function ensureOrganizationSlugs() {
 
   try {
     // Backfill legacy organizations that were created before slug was introduced.
-    await prisma.$runCommandRaw({
-      update: "Organization",
-      updates: [
-        {
-          q: {
-            $or: [{ slug: null }, { slug: { $exists: false } }, { slug: "" }],
-          },
-          u: [
-            {
-              $set: {
-                slug: {
-                  $concat: ["org-", { $toString: "$_id" }],
-                },
-              },
-            },
-          ],
-          multi: true,
-        },
-      ],
-    });
+    await backfillOrganizationSlugs();
   } catch {
-    // Ignore failures here; regular Prisma queries will surface real errors.
+    // Ignore failures here; regular database queries will surface real errors.
   }
 }

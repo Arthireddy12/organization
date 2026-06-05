@@ -1,4 +1,17 @@
-import { prisma } from "@/lib/prisma";
+import {
+  createOrganization,
+  deleteOrganizationById,
+  findOrganizationByAny,
+  listOrganizations,
+  updateOrganizationById,
+} from "@/app/repositories/organization";
+import { createUser, deleteUsersByOrganizationId } from "@/app/repositories/user";
+import {
+  createTenantDatabaseName,
+  dropTenantDatabase,
+  provisionTenantDatabase,
+} from "@/app/lib/mongodb/tenant";
+import { isDuplicateKeyError } from "@/app/utils/helper";
 import { getSessionFromCookie } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import {
@@ -117,11 +130,7 @@ export async function GET() {
 
     await ensureOrganizationSlugs();
 
-    const organizations = await prisma.organization.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const organizations = await listOrganizations() as Parameters<typeof mapOrgToPayload>[0][];
 
     const payload = organizations.map(mapOrgToPayload);
 
@@ -207,17 +216,12 @@ export async function POST(request: Request) {
     const baseSlug = slugifyOrganizationName(organizationName);
     const slug = baseSlug.length > 0 ? baseSlug : `org-${Date.now().toString(36)}`;
 
-    const existingOrganization = await prisma.organization.findFirst({
-      where: {
-        OR: [
+    const existingOrganization = await findOrganizationByAny([
           { name: organizationName },
           { email: organizationEmail },
           { adminEmail: superAdminEmail },
           { slug },
-        ],
-      },
-      select: { id: true },
-    });
+    ]);
     if (existingOrganization) {
       return NextResponse.json(
         { error: "Organization already exists" },
@@ -227,8 +231,7 @@ export async function POST(request: Request) {
 
     const passwordHash = await hash(superAdminPassword, 10);
 
-    const created = await prisma.organization.create({
-      data: {
+    let created = await createOrganization({
         name: organizationName,
         email: organizationEmail,
         phone: phoneNumber,
@@ -246,28 +249,33 @@ export async function POST(request: Request) {
         isActive: true,
         startDate: now,
         autoDeactivateDate,
-      },
-    });
+    }) as Parameters<typeof mapOrgToPayload>[0] & { tenantDatabase?: string };
+
+    const tenantDatabase = createTenantDatabaseName(slug, created.id);
 
     try {
-      await prisma.user.create({
-        data: {
+      await provisionTenantDatabase(tenantDatabase, { id: created.id, slug });
+      console.info("Tenant database created", {
+        organizationName,
+        organizationId: created.id,
+        tenantDatabase,
+      });
+      created = await updateOrganizationById(created.id, { tenantDatabase }) as typeof created;
+
+      await createUser({
           name: superAdminName,
           email: superAdminEmail,
           password: passwordHash,
           role: "SUPER_ADMIN",
           organizationId: created.id,
           createdAt: now,
-        },
       });
+
     } catch (userCreateError) {
-      await prisma.organization.delete({ where: { id: created.id } });
-      if (
-        typeof userCreateError === "object" &&
-        userCreateError !== null &&
-        "code" in userCreateError &&
-        userCreateError.code === "P2002"
-      ) {
+      await deleteUsersByOrganizationId(created.id);
+      await deleteOrganizationById(created.id);
+      await dropTenantDatabase(tenantDatabase).catch(() => undefined);
+      if (isDuplicateKeyError(userCreateError)) {
         return NextResponse.json(
           {
             error:

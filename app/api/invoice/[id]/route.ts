@@ -1,6 +1,10 @@
 // app/api/invoice/[id]/route.ts
 
-import { prisma } from "@/lib/prisma";
+import {
+  deleteInvoiceById,
+  findInvoiceById,
+  updateInvoiceById,
+} from "@/app/repositories/invoice";
 import { NextResponse } from "next/server";
 
 function getErrorMessage(error: unknown) {
@@ -18,12 +22,7 @@ export async function GET(
   try {
     const { id } = await context.params;
 
-    const invoice =
-      await prisma.invoice.findUnique({
-        where: {
-          id,
-        },
-      });
+    const invoice = await findInvoiceById(id);
 
     if (!invoice) {
       return NextResponse.json(
@@ -94,12 +93,7 @@ export async function PUT(
     const finalAmount =
       taxableAmount + gstAmount + sgstAmount;
 
-    const updatedInvoice =
-      await prisma.invoice.update({
-        where: {
-          id,
-        },
-        data: {
+    const updatedInvoice = await updateInvoiceById(id, {
           organizationName,
           mobileNumber,
           address,
@@ -110,8 +104,15 @@ export async function PUT(
           sgst,
           taxableAmount,
           finalAmount,
-        },
-      });
+          updatedAt: new Date(),
+    });
+
+    if (!updatedInvoice) {
+      return NextResponse.json(
+        { success: false, message: "Invoice not found" },
+        { status: 404 },
+      );
+    }
 
     return NextResponse.json(
       {
@@ -143,12 +144,7 @@ export async function DELETE(
   try {
     const { id } = await context.params;
 
-    const invoice =
-      await prisma.invoice.findUnique({
-        where: {
-          id,
-        },
-      });
+    const invoice = await findInvoiceById(id);
 
     if (!invoice) {
       return NextResponse.json(
@@ -160,11 +156,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.invoice.delete({
-      where: {
-        id,
-      },
-    });
+    await deleteInvoiceById(id);
 
     return NextResponse.json(
       {

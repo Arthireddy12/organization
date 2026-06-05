@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Mail, ShieldCheck, UserRound } from "lucide-react";
 import { getSessionFromCookie } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { findUserById } from "@/app/repositories/user";
 import { Panel, PanelHeader } from "@/components/common/panel";
 
 function formatDate(date: Date) {
@@ -29,15 +29,7 @@ export default async function SettingsPage() {
     redirect("/");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: {
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-    },
-  });
+  const user = await findUserById(session.userId, "name email role createdAt");
 
   if (!user) {
     redirect("/login");

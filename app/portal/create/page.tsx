@@ -1,6 +1,6 @@
 import { getSessionFromCookie } from "@/lib/auth";
 import { normalizeModuleAccessToArray } from "@/lib/organization";
-import { prisma } from "@/lib/prisma";
+import { findOrganizationById } from "@/app/repositories/organization";
 import { redirect } from "next/navigation";
 import CreateOrganizationForm from "./CreateOrganizationForm";
 
@@ -30,26 +30,7 @@ export default async function CreateOrganizationPage({
     return <CreateOrganizationForm mode="create" />;
   }
 
-  const organization = await prisma.organization.findUnique({
-    where: { id: organizationId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      phone: true,
-      industry: true,
-      address: true,
-      adminName: true,
-      adminEmail: true,
-      adminPhone: true,
-      adminDesignation: true,
-      startDate: true,
-      autoDeactivateDate: true,
-      isActive: true,
-      userLimit: true,
-      moduleAccess: true,
-    },
-  });
+  const organization = await findOrganizationById(organizationId);
 
   if (!organization) {
     redirect("/portal/organizations");

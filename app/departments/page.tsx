@@ -1,16 +1,9 @@
-import { prisma } from "@/lib/prisma";
+import { listDepartments } from "@/app/repositories/department";
 import Link from "next/link";
 import { secondaryLinkButtonClass } from "@/lib/form-styles";
 
 export default async function DepartmentsPage() {
-  const departments = await prisma.department.findMany({
-    orderBy: { name: "asc" },
-    include: {
-      organization: {
-        select: { name: true },
-      },
-    },
-  });
+  const departments = await listDepartments();
 
   return (
     <div className="px-4 pb-16 pt-6 sm:px-6 lg:px-8">
