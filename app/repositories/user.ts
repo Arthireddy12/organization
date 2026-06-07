@@ -1,4 +1,5 @@
 import { COLLECTIONS, getCollection } from "@/app/lib/mongodb/collection";
+import { ensureTenantCollection } from "@/app/lib/mongodb/tenant";
 import type { OrganizationDocument } from "@/app/models/organization";
 import type { UserDocument } from "@/app/models/user";
 import { toObjectId, toPlain } from "@/app/utils/helper";
@@ -27,6 +28,30 @@ export async function userExistsByEmail(email: string) {
 
 export async function createUser(data: Record<string, unknown>) {
   const users = await getCollection<UserDocument>(COLLECTIONS.USERS);
+  const organizationId =
+    typeof data.organizationId === "string" ? toObjectId(data.organizationId) : data.organizationId;
+  const user = {
+    role: "EMPLOYEE",
+    organizationId: null,
+    resetOtpHash: null,
+    resetOtpExpiresAt: null,
+    resetOtpRequestedAt: null,
+    createdAt: new Date(),
+    ...data,
+    ...(organizationId !== undefined ? { organizationId } : {}),
+  } as unknown as UserDocument;
+  const result = await users.insertOne(user);
+  return toPlain({ ...user, _id: result.insertedId }) as UserRecord;
+}
+
+export async function createTenantUser(
+  tenantDatabaseName: string,
+  data: Record<string, unknown>,
+) {
+  const users = await ensureTenantCollection<UserDocument>(tenantDatabaseName, COLLECTIONS.USERS, [
+    { key: { email: 1 }, unique: true },
+    { key: { organizationId: 1 } },
+  ]);
   const organizationId =
     typeof data.organizationId === "string" ? toObjectId(data.organizationId) : data.organizationId;
   const user = {

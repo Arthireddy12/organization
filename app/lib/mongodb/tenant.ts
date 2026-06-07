@@ -1,4 +1,5 @@
-import { Db, IndexDescription, MongoClient } from "mongodb";
+import type { Collection, Document, IndexDescription } from "mongodb";
+import { Db, MongoClient } from "mongodb";
 
 const globalForMongo = globalThis as unknown as {
   tenantMongoClientPromise?: Promise<MongoClient>;
@@ -82,11 +83,11 @@ function validateCollectionName(collectionName: string) {
   }
 }
 
-export async function ensureTenantCollection(
+export async function ensureTenantCollection<T extends Document>(
   databaseName: string,
   collectionName: string,
   indexes: IndexDescription[] = [],
-) {
+): Promise<Collection<T>> {
   validateCollectionName(collectionName);
 
   const database = await getTenantDatabase(databaseName);
@@ -102,5 +103,5 @@ export async function ensureTenantCollection(
     await database.collection(collectionName).createIndexes(indexes);
   }
 
-  return database.collection(collectionName);
+  return database.collection<T>(collectionName);
 }

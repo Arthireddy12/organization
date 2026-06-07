@@ -5,7 +5,7 @@ import {
   listOrganizations,
   updateOrganizationById,
 } from "@/app/repositories/organization";
-import { createUser, deleteUsersByOrganizationId } from "@/app/repositories/user";
+import { createTenantUser } from "@/app/repositories/user";
 import {
   createTenantDatabaseName,
   dropTenantDatabase,
@@ -262,17 +262,16 @@ export async function POST(request: Request) {
       });
       created = await updateOrganizationById(created.id, { tenantDatabase }) as typeof created;
 
-      await createUser({
-          name: superAdminName,
-          email: superAdminEmail,
-          password: passwordHash,
-          role: "SUPER_ADMIN",
-          organizationId: created.id,
-          createdAt: now,
+      await createTenantUser(tenantDatabase, {
+        name: superAdminName,
+        email: superAdminEmail,
+        password: passwordHash,
+        role: "SUPER_ADMIN",
+        organizationId: created.id,
+        createdAt: now,
       });
 
     } catch (userCreateError) {
-      await deleteUsersByOrganizationId(created.id);
       await deleteOrganizationById(created.id);
       await dropTenantDatabase(tenantDatabase).catch(() => undefined);
       if (isDuplicateKeyError(userCreateError)) {
