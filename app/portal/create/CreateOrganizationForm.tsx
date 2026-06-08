@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { buildSystemDomain, extractSystemDomainLabel, SYSTEM_DOMAIN_SUFFIX } from "@/lib/organization";
 import { 
   Building2, 
   User, 
@@ -78,6 +79,8 @@ export type InitialOrganizationFormData = {
   superAdminEmail: string;
   adminPhone: string;
   designation: string;
+  systemDomain: string;
+  customDomain: string;
   startDate: string | null;
   autoDeactivateDate: string | null;
   isActive: boolean;
@@ -103,6 +106,10 @@ export default function CreateOrganizationForm({
   const [phoneNumber, setPhoneNumber] = useState(initialOrganization?.phoneNumber ?? "");
   const [industry, setIndustry] = useState(initialOrganization?.industry ?? "");
   const [address, setAddress] = useState(initialOrganization?.address ?? "");
+  const [systemDomainName, setSystemDomainName] = useState(
+    extractSystemDomainLabel(initialOrganization?.systemDomain ?? ""),
+  );
+  const [customDomain, setCustomDomain] = useState(initialOrganization?.customDomain ?? "");
   const [autoDeactivateDate, setAutoDeactivateDate] = useState(toDateInputValue(initialOrganization?.autoDeactivateDate));
   
   const [superAdminName, setSuperAdminName] = useState(initialOrganization?.superAdminName ?? "");
@@ -203,6 +210,11 @@ export default function CreateOrganizationForm({
     setToast(null);
 
     try {
+      const systemDomain = buildSystemDomain(systemDomainName);
+      if (!systemDomain) {
+        throw new Error(`System domain is required and must end with ${SYSTEM_DOMAIN_SUFFIX}`);
+      }
+
       const response = await fetch(isEditMode ? `/api/portal/${initialOrganization?.id}` : "/api/portal", {
         method: isEditMode ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -212,6 +224,8 @@ export default function CreateOrganizationForm({
           phoneNumber,
           industry,
           address,
+          systemDomain,
+          customDomain,
           adminPhone,
           designation,
           ...(isEditMode
@@ -241,6 +255,8 @@ export default function CreateOrganizationForm({
       setPhoneNumber("");
       setIndustry("");
       setAddress("");
+      setSystemDomainName("");
+      setCustomDomain("");
       setAutoDeactivateDate("");
       setSuperAdminName("");
       setSuperAdminEmail("");
@@ -314,6 +330,37 @@ export default function CreateOrganizationForm({
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18}/>
                 </div>
+              </Field>
+
+              <Field label="System Domain" required>
+                <div className="space-y-2">
+                  <div className="flex">
+                    <input
+                      className={`${inputStyle} rounded-r-none`}
+                      placeholder="Enter domain name"
+                      value={systemDomainName}
+                      onChange={e => setSystemDomainName(e.target.value)}
+                      readOnly={isViewMode}
+                      required
+                    />
+                    <div className="flex items-center rounded-r-lg border border-l-0 border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-600">
+                      {SYSTEM_DOMAIN_SUFFIX}
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Preview: {buildSystemDomain(systemDomainName) || `yourname${SYSTEM_DOMAIN_SUFFIX}`}
+                  </p>
+                </div>
+              </Field>
+
+              <Field label="Custom Domain">
+                <input
+                  className={inputStyle}
+                  placeholder="Enter custom domain"
+                  value={customDomain}
+                  onChange={e => setCustomDomain(e.target.value)}
+                  readOnly={isViewMode}
+                />
               </Field>
 
               <div className="md:col-span-2">

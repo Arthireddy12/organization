@@ -14,6 +14,8 @@ export type OrganizationRecord = DatabaseRecord & {
   adminPhone?: string | null;
   adminDesignation?: string | null;
   slug?: string | null;
+  systemDomain?: string | null;
+  customDomain?: string | null;
   tenantDatabase?: string | null;
   planName?: string | null;
   userLimit?: number | null;

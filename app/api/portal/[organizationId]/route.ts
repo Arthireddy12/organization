@@ -1,11 +1,17 @@
 import {
   deleteOrganizationById,
-  organizationExistsById,
+  findOrganizationByAny,
+  findOrganizationById,
   updateOrganizationById,
 } from "@/app/repositories/organization";
 import { getSessionFromCookie } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { type ModuleAccessObject, normalizeModuleAccessToObject } from "@/lib/organization";
+import {
+  buildSystemDomain,
+  normalizeCustomDomain,
+  type ModuleAccessObject,
+  normalizeModuleAccessToObject,
+} from "@/lib/organization";
 
 type UpdatePortalBody = {
   organizationName?: string;
@@ -17,6 +23,8 @@ type UpdatePortalBody = {
   adminEmail?: string;
   adminPhone?: string;
   designation?: string;
+  systemDomain?: string;
+  customDomain?: string | null;
   planName?: string;
   userLimit?: number;
   moduleAccess?: string[] | Record<string, boolean> | ModuleAccessObject;
@@ -64,6 +72,8 @@ export async function PATCH(
       adminEmail?: string | null;
       adminPhone?: string | null;
       adminDesignation?: string | null;
+      systemDomain?: string | null;
+      customDomain?: string | null;
       planName?: string;
       userLimit?: number;
       moduleAccess?: ModuleAccessObject;
@@ -179,10 +189,58 @@ export async function PATCH(
       updates.notes = body.notes;
     }
 
-    const existing = await organizationExistsById(organizationId);
+    const currentOrganization = await findOrganizationById(organizationId);
 
-    if (!existing) {
+    if (!currentOrganization) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    }
+
+    const nextSystemDomain = body.systemDomain !== undefined
+      ? buildSystemDomain(body.systemDomain)
+      : currentOrganization.systemDomain ?? null;
+    const nextCustomDomain = body.customDomain !== undefined
+      ? normalizeCustomDomain(body.customDomain)
+      : currentOrganization.customDomain ?? null;
+
+    if (body.systemDomain !== undefined) {
+      if (!nextSystemDomain) {
+        return NextResponse.json(
+          { error: "systemDomain is required and must end with .procorhrms.com" },
+          { status: 400 },
+        );
+      }
+      updates.systemDomain = nextSystemDomain;
+    }
+
+    if (body.customDomain !== undefined) {
+      if (nextCustomDomain && nextSystemDomain && nextCustomDomain === nextSystemDomain) {
+        return NextResponse.json(
+          { error: "customDomain must be different from systemDomain" },
+          { status: 400 },
+        );
+      }
+      updates.customDomain = nextCustomDomain;
+    }
+
+    if (nextSystemDomain || nextCustomDomain) {
+      const duplicateDomain = await findOrganizationByAny(
+        [
+          ...(nextSystemDomain
+            ? [{ systemDomain: nextSystemDomain }, { customDomain: nextSystemDomain }]
+            : []),
+          ...(nextCustomDomain
+            ? [{ customDomain: nextCustomDomain }, { systemDomain: nextCustomDomain }]
+            : []),
+        ],
+        organizationId,
+      );
+
+      if (duplicateDomain) {
+        return NextResponse.json(
+          { error: "System or custom domain already exists" },
+          { status: 409 },
+        );
+      }
     }
 
     const updated = await updateOrganizationById(organizationId, updates);

@@ -39,10 +39,20 @@ export async function findOrganizationBySlug(slug: string) {
   return toPlain(await organizations.findOne({ slug })) as OrganizationRecord | null;
 }
 
-export async function findOrganizationByAny(filters: Record<string, unknown>[]) {
+export async function findOrganizationByAny(
+  filters: Record<string, unknown>[],
+  excludeId?: string,
+) {
   const organizations = await getCollection<OrganizationDocument>(COLLECTIONS.ORGANIZATIONS);
+  const excludedObjectId = excludeId ? toObjectId(excludeId) : null;
+
   return organizations.findOne(
-    { $or: filters as Filter<OrganizationDocument>[] },
+    {
+      $and: [
+        { $or: filters as Filter<OrganizationDocument>[] },
+        ...(excludedObjectId ? [{ _id: { $ne: excludedObjectId } }] : []),
+      ],
+    },
     { projection: { _id: 1 } },
   );
 }

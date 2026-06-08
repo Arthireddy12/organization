@@ -50,6 +50,8 @@ export default async function CreateOrganizationPage({
         superAdminEmail: organization.adminEmail ?? "",
         adminPhone: organization.adminPhone ?? "",
         designation: organization.adminDesignation ?? "",
+        systemDomain: organization.systemDomain ?? "",
+        customDomain: organization.customDomain ?? "",
         startDate: organization.startDate?.toISOString() ?? null,
         autoDeactivateDate: organization.autoDeactivateDate?.toISOString() ?? null,
         isActive: organization.isActive,

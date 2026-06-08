@@ -28,6 +28,8 @@ type OrganizationRecord = {
   id: string;
   name: string;
   slug?: string | null;
+  systemDomain?: string | null;
+  customDomain?: string | null;
   planName?: string | null;
   userLimit?: number | null;
   isActive: boolean;
@@ -84,6 +86,8 @@ export async function GET(
       id: organization.id,
       name: organization.name,
       slug: organization.slug,
+      systemDomain: organization.systemDomain ?? null,
+      customDomain: organization.customDomain ?? null,
       planName: organization.planName ?? "Starter",
       userLimit: organization.userLimit ?? 25,
       isActive: organization.isActive,

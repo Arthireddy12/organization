@@ -13,9 +13,11 @@ import {
 } from "@/app/lib/mongodb/tenant";
 import { isDuplicateKeyError } from "@/app/utils/helper";
 import { getSessionFromCookie } from "@/lib/auth";
+import { ensureOrganizationSlugs } from "@/lib/organization-server";
 import { NextResponse } from "next/server";
 import {
-  ensureOrganizationSlugs,
+  buildSystemDomain,
+  normalizeCustomDomain,
   type ModuleAccessObject,
   normalizeModuleAccessToArray,
   normalizeModuleAccessToObject,
@@ -30,6 +32,8 @@ type CreateOrganizationBody = {
   address?: string;
   adminPhone?: string;
   designation?: string;
+  systemDomain?: string;
+  customDomain?: string | null;
   moduleAccess?: string[] | Record<string, boolean> | ModuleAccessObject;
   autoDeactivateDate?: string | null;
   superAdminName?: string;
@@ -72,6 +76,8 @@ function mapOrgToPayload(org: {
   adminPhone: string | null;
   adminDesignation: string | null;
   slug: string | null;
+  systemDomain: string | null;
+  customDomain: string | null;
   createdAt: Date;
   updatedAt: Date;
   planName: string | null;
@@ -100,6 +106,8 @@ function mapOrgToPayload(org: {
     adminPhone: org.adminPhone,
     adminDesignation: org.adminDesignation,
     slug: org.slug,
+    systemDomain: org.systemDomain,
+    customDomain: org.customDomain,
     createdAt: org.createdAt,
     updatedAt: org.updatedAt,
     portal: {
@@ -159,6 +167,8 @@ export async function POST(request: Request) {
     const address = body.address?.trim();
     const adminPhone = body.adminPhone?.trim();
     const designation = body.designation?.trim();
+    const systemDomain = buildSystemDomain(body.systemDomain ?? "");
+    const customDomain = normalizeCustomDomain(body.customDomain);
     const userLimit = 25;
     const moduleAccess = normalizeModuleAccessToObject(body.moduleAccess ?? []);
     const superAdminName = body.superAdminName?.trim();
@@ -175,6 +185,18 @@ export async function POST(request: Request) {
     if (!organizationEmail) {
       return NextResponse.json(
         { error: "organizationEmail is required" },
+        { status: 400 },
+      );
+    }
+    if (!systemDomain) {
+      return NextResponse.json(
+        { error: "systemDomain is required and must end with .procorhrms.com" },
+        { status: 400 },
+      );
+    }
+    if (customDomain && customDomain === systemDomain) {
+      return NextResponse.json(
+        { error: "customDomain must be different from systemDomain" },
         { status: 400 },
       );
     }
@@ -221,10 +243,15 @@ export async function POST(request: Request) {
           { email: organizationEmail },
           { adminEmail: superAdminEmail },
           { slug },
+          { systemDomain },
+          { customDomain: systemDomain },
+          ...(customDomain
+            ? [{ customDomain }, { systemDomain: customDomain }]
+            : []),
     ]);
     if (existingOrganization) {
       return NextResponse.json(
-        { error: "Organization already exists" },
+        { error: "Organization, admin email, or domain already exists" },
         { status: 409 },
       );
     }
@@ -242,6 +269,8 @@ export async function POST(request: Request) {
         adminPhone,
         adminDesignation: designation,
         slug,
+        systemDomain,
+        customDomain,
         createdAt: now,
         updatedAt: now,
         userLimit,
@@ -251,7 +280,7 @@ export async function POST(request: Request) {
         autoDeactivateDate,
     }) as Parameters<typeof mapOrgToPayload>[0] & { tenantDatabase?: string };
 
-    const tenantDatabase = createTenantDatabaseName(slug, created.id);
+    const tenantDatabase = createTenantDatabaseName(systemDomain, created.id);
 
     try {
       await provisionTenantDatabase(tenantDatabase, { id: created.id, slug });
