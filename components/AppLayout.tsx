@@ -18,7 +18,7 @@ function DashboardPages({ children }: { children: ReactNode }) {
         }`}
       >
         <Navbar />
-        <main className="flex-1 overflow-auto bg-white">{children}</main>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-white">{children}</main>
       </div>
     </div>
   );

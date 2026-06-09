@@ -12,6 +12,27 @@ import {
   type ModuleAccessObject,
   normalizeModuleAccessToObject,
 } from "@/lib/organization";
+import {
+  normalizeOrganizationRoleAccessSetup,
+  type OrganizationRoleAccessSetup,
+} from "@/lib/organization-role-access";
+import {
+  normalizeOrganizationAttributeSetup,
+  type OrganizationAttributeSetup,
+} from "@/lib/organization-attributes";
+import {
+  normalizeOrganizationGroupDefinitionSetup,
+  type OrganizationGroupDefinitionSetup,
+} from "@/lib/organization-group-definition";
+import {
+  normalizeOrganizationPacketSetup,
+  type OrganizationPacketSetup,
+} from "@/lib/organization-packets";
+import {
+  buildOrganizationAddressFromSetupProfile,
+  normalizeOrganizationSetupProfile,
+  type OrganizationSetupProfile,
+} from "@/lib/organization-setup";
 
 type UpdatePortalBody = {
   organizationName?: string;
@@ -33,6 +54,11 @@ type UpdatePortalBody = {
   autoDeactivateDate?: string | null;
   storageLimitGb?: number | null;
   notes?: string;
+  setupProfile?: OrganizationSetupProfile;
+  attributeSetup?: OrganizationAttributeSetup;
+  roleAccessSetup?: OrganizationRoleAccessSetup;
+  groupDefinitionSetup?: OrganizationGroupDefinitionSetup;
+  packetSetup?: OrganizationPacketSetup;
 };
 
 function getTodayDateInputValue() {
@@ -82,6 +108,11 @@ export async function PATCH(
       autoDeactivateDate?: Date | null;
       storageLimitGb?: number | null;
       notes?: string | null;
+      setupProfile?: OrganizationSetupProfile | null;
+      attributeSetup?: OrganizationAttributeSetup | null;
+      roleAccessSetup?: OrganizationRoleAccessSetup | null;
+      groupDefinitionSetup?: OrganizationGroupDefinitionSetup | null;
+      packetSetup?: OrganizationPacketSetup | null;
       updatedAt: Date;
     } = {
       updatedAt: new Date(),
@@ -105,6 +136,33 @@ export async function PATCH(
 
     if (typeof body.address === "string") {
       updates.address = body.address.trim() || null;
+    }
+
+    if (body.setupProfile !== undefined) {
+      const normalizedSetupProfile = normalizeOrganizationSetupProfile(body.setupProfile);
+      updates.setupProfile = normalizedSetupProfile;
+      updates.address =
+        buildOrganizationAddressFromSetupProfile(normalizedSetupProfile) ||
+        updates.address ||
+        null;
+    }
+
+    if (body.attributeSetup !== undefined) {
+      updates.attributeSetup = normalizeOrganizationAttributeSetup(body.attributeSetup);
+    }
+
+    if (body.roleAccessSetup !== undefined) {
+      updates.roleAccessSetup = normalizeOrganizationRoleAccessSetup(body.roleAccessSetup);
+    }
+
+    if (body.groupDefinitionSetup !== undefined) {
+      updates.groupDefinitionSetup = normalizeOrganizationGroupDefinitionSetup(
+        body.groupDefinitionSetup,
+      );
+    }
+
+    if (body.packetSetup !== undefined) {
+      updates.packetSetup = normalizeOrganizationPacketSetup(body.packetSetup);
     }
 
     if (typeof body.adminName === "string") {
@@ -220,6 +278,13 @@ export async function PATCH(
         );
       }
       updates.customDomain = nextCustomDomain;
+    }
+
+    if (Boolean(nextSystemDomain) === Boolean(nextCustomDomain)) {
+      return NextResponse.json(
+        { error: "Select either systemDomain or customDomain, but not both" },
+        { status: 400 },
+      );
     }
 
     if (nextSystemDomain || nextCustomDomain) {

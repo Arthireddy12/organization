@@ -22,6 +22,27 @@ import {
   normalizeModuleAccessToArray,
   normalizeModuleAccessToObject,
 } from "@/lib/organization";
+import {
+  normalizeOrganizationRoleAccessSetup,
+  type OrganizationRoleAccessSetup,
+} from "@/lib/organization-role-access";
+import {
+  normalizeOrganizationAttributeSetup,
+  type OrganizationAttributeSetup,
+} from "@/lib/organization-attributes";
+import {
+  normalizeOrganizationGroupDefinitionSetup,
+  type OrganizationGroupDefinitionSetup,
+} from "@/lib/organization-group-definition";
+import {
+  normalizeOrganizationPacketSetup,
+  type OrganizationPacketSetup,
+} from "@/lib/organization-packets";
+import {
+  buildOrganizationAddressFromSetupProfile,
+  normalizeOrganizationSetupProfile,
+  type OrganizationSetupProfile,
+} from "@/lib/organization-setup";
 import { hash } from "bcryptjs";
 
 type CreateOrganizationBody = {
@@ -39,6 +60,11 @@ type CreateOrganizationBody = {
   superAdminName?: string;
   superAdminEmail?: string;
   superAdminPassword?: string;
+  setupProfile?: OrganizationSetupProfile;
+  attributeSetup?: OrganizationAttributeSetup;
+  roleAccessSetup?: OrganizationRoleAccessSetup;
+  groupDefinitionSetup?: OrganizationGroupDefinitionSetup;
+  packetSetup?: OrganizationPacketSetup;
 };
 
 function slugifyOrganizationName(value: string) {
@@ -93,6 +119,11 @@ function mapOrgToPayload(org: {
   attendanceEnabled: boolean | null;
   recruitmentEnabled: boolean | null;
   notes: string | null;
+  setupProfile: OrganizationSetupProfile | null;
+  attributeSetup: OrganizationAttributeSetup | null;
+  roleAccessSetup: OrganizationRoleAccessSetup | null;
+  groupDefinitionSetup: OrganizationGroupDefinitionSetup | null;
+  packetSetup: OrganizationPacketSetup | null;
 }) {
   return {
     id: org.id,
@@ -125,6 +156,11 @@ function mapOrgToPayload(org: {
       attendanceEnabled: org.attendanceEnabled ?? true,
       recruitmentEnabled: org.recruitmentEnabled ?? false,
       notes: org.notes,
+      setupProfile: org.setupProfile ?? null,
+      attributeSetup: org.attributeSetup ?? null,
+      roleAccessSetup: org.roleAccessSetup ?? null,
+      groupDefinitionSetup: org.groupDefinitionSetup ?? null,
+      packetSetup: org.packetSetup ?? null,
     },
   };
 }
@@ -164,7 +200,16 @@ export async function POST(request: Request) {
     const organizationEmail = body.organizationEmail?.trim().toLowerCase();
     const phoneNumber = body.phoneNumber?.trim();
     const industry = body.industry?.trim();
-    const address = body.address?.trim();
+    const normalizedSetupProfile = normalizeOrganizationSetupProfile(body.setupProfile);
+    const normalizedAttributeSetup = normalizeOrganizationAttributeSetup(body.attributeSetup);
+    const normalizedRoleAccessSetup = normalizeOrganizationRoleAccessSetup(body.roleAccessSetup);
+    const normalizedGroupDefinitionSetup = normalizeOrganizationGroupDefinitionSetup(
+      body.groupDefinitionSetup,
+    );
+    const normalizedPacketSetup = normalizeOrganizationPacketSetup(body.packetSetup);
+    const address =
+      buildOrganizationAddressFromSetupProfile(normalizedSetupProfile) ||
+      body.address?.trim();
     const adminPhone = body.adminPhone?.trim();
     const designation = body.designation?.trim();
     const systemDomain = buildSystemDomain(body.systemDomain ?? "");
@@ -188,13 +233,16 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    if (!systemDomain) {
+    const hasSystemDomain = Boolean(systemDomain);
+    const hasCustomDomain = Boolean(customDomain);
+
+    if (hasSystemDomain === hasCustomDomain) {
       return NextResponse.json(
-        { error: "systemDomain is required and must end with .procorhrms.com" },
+        { error: "Select either systemDomain or customDomain, but not both" },
         { status: 400 },
       );
     }
-    if (customDomain && customDomain === systemDomain) {
+    if (customDomain && systemDomain && customDomain === systemDomain) {
       return NextResponse.json(
         { error: "customDomain must be different from systemDomain" },
         { status: 400 },
@@ -243,11 +291,10 @@ export async function POST(request: Request) {
           { email: organizationEmail },
           { adminEmail: superAdminEmail },
           { slug },
-          { systemDomain },
-          { customDomain: systemDomain },
-          ...(customDomain
-            ? [{ customDomain }, { systemDomain: customDomain }]
+          ...(systemDomain
+            ? [{ systemDomain }, { customDomain: systemDomain }]
             : []),
+          ...(customDomain ? [{ customDomain }, { systemDomain: customDomain }] : []),
     ]);
     if (existingOrganization) {
       return NextResponse.json(
@@ -268,6 +315,11 @@ export async function POST(request: Request) {
         adminEmail: superAdminEmail,
         adminPhone,
         adminDesignation: designation,
+        setupProfile: normalizedSetupProfile,
+        attributeSetup: normalizedAttributeSetup,
+        roleAccessSetup: normalizedRoleAccessSetup,
+        groupDefinitionSetup: normalizedGroupDefinitionSetup,
+        packetSetup: normalizedPacketSetup,
         slug,
         systemDomain,
         customDomain,
@@ -280,7 +332,10 @@ export async function POST(request: Request) {
         autoDeactivateDate,
     }) as Parameters<typeof mapOrgToPayload>[0] & { tenantDatabase?: string };
 
-    const tenantDatabase = createTenantDatabaseName(systemDomain, created.id);
+    const tenantDatabase = createTenantDatabaseName(
+      systemDomain || customDomain || organizationName,
+      created.id,
+    );
 
     try {
       await provisionTenantDatabase(tenantDatabase, { id: created.id, slug });
