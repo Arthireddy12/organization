@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { buildSystemDomain, extractSystemDomainLabel, SYSTEM_DOMAIN_SUFFIX } from "@/lib/organization";
+import { buildSystemDomain, extractSystemDomainLabel } from "@/lib/organization";
 import {
   getAttributeUnits,
   findAttributeById,
@@ -30,9 +30,15 @@ import {
 } from "@/lib/organization-setup";
 import {
   formatDate,
-  getTodayDateInputValue,
   toDateInputValue,
 } from "./date-utils";
+import {
+  validateOrganizationAttributeSetupDraft,
+  validateOrganizationGroupDefinitionSetupDraft,
+  validateOrganizationPacketSetupDraft,
+  validateSetupStepOne,
+  type ValidationErrorMap,
+} from "@/lib/organization-setup-validation";
 import {
   appendBranchOffice,
   appendCustomAttribute,
@@ -79,7 +85,6 @@ export function useCreateOrganizationForm({
   initialStep?: OrganizationCreateStep;
 }) {
   const router = useRouter();
-  const todayDate = getTodayDateInputValue();
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
   const isCreateMode = mode === "create";
@@ -94,10 +99,14 @@ export function useCreateOrganizationForm({
 
   const [organizationId, setOrganizationId] = useState(initialOrganization?.id ?? "");
   const [activeStep, setActiveStepState] = useState<OrganizationCreateStep>(initialStep);
-  const [organizationName, setOrganizationName] = useState(initialOrganization?.organizationName ?? "");
-  const [organizationEmail, setOrganizationEmail] = useState(initialOrganization?.organizationEmail ?? "");
-  const [phoneNumber, setPhoneNumber] = useState(initialOrganization?.phoneNumber ?? "");
-  const [industry, setIndustry] = useState(initialOrganization?.industry ?? "");
+  const [organizationName, setOrganizationNameState] = useState(
+    initialOrganization?.organizationName ?? "",
+  );
+  const [organizationEmail, setOrganizationEmailState] = useState(
+    initialOrganization?.organizationEmail ?? "",
+  );
+  const [phoneNumber, setPhoneNumberState] = useState(initialOrganization?.phoneNumber ?? "");
+  const [industry, setIndustryState] = useState(initialOrganization?.industry ?? "");
   const [setupProfile, setSetupProfile] = useState<OrganizationSetupProfile>(initialSetupProfile);
   const [attributeSetup, setAttributeSetup] = useState<OrganizationAttributeSetup>(
     normalizeOrganizationAttributeSetup(initialOrganization?.attributeSetup),
@@ -115,18 +124,22 @@ export function useCreateOrganizationForm({
   const [domainType, setDomainType] = useState<DomainType>(
     initialOrganization?.customDomain ? "custom" : "system",
   );
-  const [systemDomainName, setSystemDomainName] = useState(
+  const [systemDomainName, setSystemDomainNameState] = useState(
     extractSystemDomainLabel(initialOrganization?.systemDomain ?? ""),
   );
-  const [customDomain, setCustomDomain] = useState(initialOrganization?.customDomain ?? "");
-  const [autoDeactivateDate, setAutoDeactivateDate] = useState(
+  const [customDomain, setCustomDomainState] = useState(initialOrganization?.customDomain ?? "");
+  const [autoDeactivateDate, setAutoDeactivateDateState] = useState(
     toDateInputValue(initialOrganization?.autoDeactivateDate),
   );
-  const [superAdminName, setSuperAdminName] = useState(initialOrganization?.superAdminName ?? "");
-  const [superAdminEmail, setSuperAdminEmail] = useState(initialOrganization?.superAdminEmail ?? "");
-  const [superAdminPassword, setSuperAdminPassword] = useState("");
-  const [adminPhone, setAdminPhone] = useState(initialOrganization?.adminPhone ?? "");
-  const [designation, setDesignation] = useState(initialOrganization?.designation ?? "");
+  const [superAdminName, setSuperAdminNameState] = useState(
+    initialOrganization?.superAdminName ?? "",
+  );
+  const [superAdminEmail, setSuperAdminEmailState] = useState(
+    initialOrganization?.superAdminEmail ?? "",
+  );
+  const [superAdminPassword, setSuperAdminPasswordState] = useState("");
+  const [adminPhone, setAdminPhoneState] = useState(initialOrganization?.adminPhone ?? "");
+  const [designation, setDesignationState] = useState(initialOrganization?.designation ?? "");
   const [modulePermissions, setModulePermissions] = useState<Record<string, boolean>>(() =>
     buildInitialModulePermissions(initialOrganization?.moduleAccess),
   );
@@ -135,6 +148,7 @@ export function useCreateOrganizationForm({
   );
   const [creating, setCreating] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
+  const [fieldErrors, setFieldErrors] = useState<ValidationErrorMap>({});
   const [completedSteps, setCompletedSteps] = useState<number[]>(
     initialOrganization?.setupCompletedSteps ?? [],
   );
@@ -146,31 +160,97 @@ export function useCreateOrganizationForm({
     .map((attributeId) => findAttributeById(attributeSetup, attributeId))
     .filter((attribute): attribute is OrganizationAttribute => Boolean(attribute));
 
+  function setOrganizationName(value: string) {
+    setFieldErrors({});
+    setOrganizationNameState(value);
+  }
+
+  function setOrganizationEmail(value: string) {
+    setFieldErrors({});
+    setOrganizationEmailState(value);
+  }
+
+  function setPhoneNumber(value: string) {
+    setFieldErrors({});
+    setPhoneNumberState(value);
+  }
+
+  function setIndustry(value: string) {
+    setFieldErrors({});
+    setIndustryState(value);
+  }
+
+  function setSystemDomainName(value: string) {
+    setFieldErrors({});
+    setSystemDomainNameState(value);
+  }
+
+  function setCustomDomain(value: string) {
+    setFieldErrors({});
+    setCustomDomainState(value);
+  }
+
+  function setAutoDeactivateDate(value: string) {
+    setFieldErrors({});
+    setAutoDeactivateDateState(value);
+  }
+
+  function setSuperAdminName(value: string) {
+    setFieldErrors({});
+    setSuperAdminNameState(value);
+  }
+
+  function setSuperAdminEmail(value: string) {
+    setFieldErrors({});
+    setSuperAdminEmailState(value);
+  }
+
+  function setSuperAdminPassword(value: string) {
+    setFieldErrors({});
+    setSuperAdminPasswordState(value);
+  }
+
+  function setAdminPhone(value: string) {
+    setFieldErrors({});
+    setAdminPhoneState(value);
+  }
+
+  function setDesignation(value: string) {
+    setFieldErrors({});
+    setDesignationState(value);
+  }
+
   function updateSetupProfile(field: keyof OrganizationSetupProfile, value: string) {
+    setFieldErrors({});
     setSetupProfile((current) => ({ ...current, [field]: value }));
   }
 
   function addBranchOffice(
     branch: Pick<BranchOffice, "name" | "location" | "subLocation">,
   ) {
+    setFieldErrors({});
     setSetupProfile((current) => appendBranchOffice(current, branch));
   }
 
   function addAvailableAttribute(category: AttributeCategory, label: string) {
+    setFieldErrors({});
     setAttributeSetup((current) => appendCustomAttribute(current, category, label));
   }
 
   function ensureSelectedAttribute(attributeId: string) {
+    setFieldErrors({});
     setAttributeSetup((current) => ensureAttributeSelected(current, attributeId));
   }
 
   function removeSelectedAttribute(attributeId: string) {
+    setFieldErrors({});
     setAttributeSetup((current) =>
       removeSelectedAttributeFromSetup(current, attributeId),
     );
   }
 
   function reorderSelectedAttribute(draggedId: string, targetId: string) {
+    setFieldErrors({});
     setAttributeSetup((current) =>
       reorderSelectedAttributeInSetup(current, draggedId, targetId),
     );
@@ -180,12 +260,14 @@ export function useCreateOrganizationForm({
     attributeId: string,
     unit: { id?: string; code: string; description: string },
   ) {
+    setFieldErrors({});
     setAttributeSetup((current) =>
       saveAttributeUnitInSetup(current, attributeId, unit),
     );
   }
 
   function deleteAttributeUnit(attributeId: string, unitId: string) {
+    setFieldErrors({});
     setAttributeSetup((current) =>
       deleteAttributeUnitFromSetup(current, attributeId, unitId),
     );
@@ -195,6 +277,7 @@ export function useCreateOrganizationForm({
     itemId: string,
     assignment: Omit<PacketAssignment, "id"> & { id?: string },
   ) {
+    setFieldErrors({});
     setPacketSetup((current) => savePacketAssignmentInForm(current, itemId, assignment));
   }
 
@@ -202,28 +285,33 @@ export function useCreateOrganizationForm({
     moduleId: string,
     rule: Omit<GroupDefinitionRule, "id"> & { id?: string },
   ) {
+    setFieldErrors({});
     setGroupDefinitionSetup((current) =>
       saveGroupDefinitionRuleInForm(current, moduleId, rule),
     );
   }
 
   function deletePacketAssignment(itemId: string, assignmentId: string) {
+    setFieldErrors({});
     setPacketSetup((current) =>
       deletePacketAssignmentFromForm(current, itemId, assignmentId),
     );
   }
 
   function deleteGroupDefinitionRule(moduleId: string, ruleId: string) {
+    setFieldErrors({});
     setGroupDefinitionSetup((current) =>
       deleteGroupDefinitionRuleFromForm(current, moduleId, ruleId),
     );
   }
 
   function removeBranchOffice(branchId: string) {
+    setFieldErrors({});
     setSetupProfile((current) => removeBranchOfficeFromProfile(current, branchId));
   }
 
   function toggleModuleGroup(groupName: string, childModules: readonly string[]) {
+    setFieldErrors({});
     setModulePermissions((current) =>
       toggleModulePermissionGroup(current, groupName, childModules),
     );
@@ -238,12 +326,14 @@ export function useCreateOrganizationForm({
     childModules: readonly string[],
     moduleName: string,
   ) {
+    setFieldErrors({});
     setModulePermissions((current) =>
       toggleModulePermissionItem(current, groupName, childModules, moduleName),
     );
   }
 
   function toggleModuleGroupOpen(groupName: string) {
+    setFieldErrors({});
     setOpenModuleGroups((current) => toggleOpenModuleGroupState(current, groupName));
   }
 
@@ -266,6 +356,7 @@ export function useCreateOrganizationForm({
     moduleName: string,
     enabled: boolean,
   ) {
+    setFieldErrors({});
     setRoleAccessSetup((current) =>
       setRoleAccessValue(current, subjectKey, moduleName, enabled),
     );
@@ -279,6 +370,7 @@ export function useCreateOrganizationForm({
   }
 
   function updateDomainType(nextDomainType: DomainType) {
+    setFieldErrors({});
     setDomainType(nextDomainType);
     if (nextDomainType === "system") {
       setCustomDomain("");
@@ -300,6 +392,7 @@ export function useCreateOrganizationForm({
   }
 
   function setActiveStep(step: OrganizationCreateStep) {
+    setFieldErrors({});
     setActiveStepState(step);
     if (organizationId) {
       syncSetupUrl(organizationId, step);
@@ -310,11 +403,7 @@ export function useCreateOrganizationForm({
     if (isViewMode) {
       return { success: true };
     }
-    if (autoDeactivateDate && autoDeactivateDate < todayDate) {
-      showToast({ type: "error", message: "Subscription end date cannot be before today." });
-      return { success: false };
-    }
-
+    setFieldErrors({});
     setCreating(true);
     setToast(null);
 
@@ -323,14 +412,41 @@ export function useCreateOrganizationForm({
         domainType === "system" ? buildSystemDomain(systemDomainName) : "";
       const trimmedCustomDomain =
         domainType === "custom" ? customDomain.trim() : "";
+      const validationResult =
+        step === 1
+          ? validateSetupStepOne({
+              isEditMode,
+              organizationName,
+              organizationEmail,
+              phoneNumber,
+              industry,
+              setupProfile,
+              systemDomain,
+              customDomain: trimmedCustomDomain,
+              superAdminName,
+              superAdminEmail,
+              superAdminPassword,
+              adminPhone,
+              designation,
+              autoDeactivateDate,
+            })
+          : step === 2
+            ? validateOrganizationAttributeSetupDraft(attributeSetup)
+            : step === 4
+              ? validateOrganizationPacketSetupDraft(
+                  packetSetup,
+                  attributeSetup.selectedIds,
+                )
+              : step === 5
+                ? validateOrganizationGroupDefinitionSetupDraft(
+                    groupDefinitionSetup,
+                    attributeSetup.selectedIds,
+                  )
+                : { valid: true, errors: {} as ValidationErrorMap };
 
-      if (domainType === "system" && !systemDomain) {
-        throw new Error(
-          `System domain is required and must end with ${SYSTEM_DOMAIN_SUFFIX}`,
-        );
-      }
-      if (domainType === "custom" && !trimmedCustomDomain) {
-        throw new Error("Custom domain is required when custom domain is selected.");
+      if (!validationResult.valid) {
+        setFieldErrors(validationResult.errors);
+        throw new Error(Object.values(validationResult.errors)[0] ?? "Please fix the highlighted fields.");
       }
 
       const address = buildOrganizationAddressFromSetupProfile(setupProfile);
@@ -368,7 +484,10 @@ export function useCreateOrganizationForm({
 
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.error || payload.details || "Failed to save organization setup");
+        if (payload?.fieldErrors && typeof payload.fieldErrors === "object") {
+          setFieldErrors(payload.fieldErrors as ValidationErrorMap);
+        }
+        throw new Error(payload.details || payload.error || "Failed to save organization setup");
       }
 
       const nextOrganizationId =
@@ -455,6 +574,7 @@ export function useCreateOrganizationForm({
     setOpenModuleGroups(buildInitialOpenModuleGroups());
     setCompletedSteps([]);
     setActiveStep(1);
+    setFieldErrors({});
   }
 
   return {
@@ -520,6 +640,7 @@ export function useCreateOrganizationForm({
     superAdminPassword,
     systemDomainName,
     toast,
+    fieldErrors,
     toggleModuleGroup,
     toggleModuleGroupOpen,
     toggleSubModule,

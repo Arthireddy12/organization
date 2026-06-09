@@ -20,6 +20,7 @@ export type OrganizationSetupProfile = {
   financialYearEndDay: string;
   financialYearEndMonth: string;
   panNumber: string;
+  aadhaarNumber: string;
   tanNumber: string;
   pfAccountNumber: string;
 };
@@ -39,6 +40,7 @@ export const defaultOrganizationSetupProfile: OrganizationSetupProfile = {
   financialYearEndDay: "31",
   financialYearEndMonth: "March",
   panNumber: "",
+  aadhaarNumber: "",
   tanNumber: "",
   pfAccountNumber: "",
 };
@@ -102,6 +104,7 @@ export function normalizeOrganizationSetupProfile(
       defaultOrganizationSetupProfile.financialYearEndMonth,
     ),
     panNumber: normalizeString(profile.panNumber),
+    aadhaarNumber: normalizeString(profile.aadhaarNumber),
     tanNumber: normalizeString(profile.tanNumber),
     pfAccountNumber: normalizeString(profile.pfAccountNumber),
   };

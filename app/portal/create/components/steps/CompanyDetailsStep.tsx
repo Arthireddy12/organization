@@ -10,6 +10,7 @@ type CompanyDetailsStepProps = {
   organizationName: string;
   industry: string;
   setupProfile: OrganizationSetupProfile;
+  errors?: Partial<Record<string, string>>;
   onOrganizationNameChange: (value: string) => void;
   onIndustryChange: (value: string) => void;
   onSetupProfileChange: (field: keyof OrganizationSetupProfile, value: string) => void;
@@ -66,6 +67,7 @@ export default function CompanyDetailsStep(props: CompanyDetailsStepProps) {
         organizationName={props.organizationName}
         industry={props.industry}
         setupProfile={props.setupProfile}
+        errors={props.errors}
         onOrganizationNameChange={props.onOrganizationNameChange}
         onIndustryChange={props.onIndustryChange}
         onSetupProfileChange={props.onSetupProfileChange}
@@ -75,6 +77,7 @@ export default function CompanyDetailsStep(props: CompanyDetailsStepProps) {
         <AddressDetailsCard
           disabled={disabled}
           setupProfile={props.setupProfile}
+          errors={props.errors}
           onSetupProfileChange={props.onSetupProfileChange}
         />
         <BranchOfficesCard
@@ -86,6 +89,7 @@ export default function CompanyDetailsStep(props: CompanyDetailsStepProps) {
         <FinancialDetailsCard
           disabled={disabled}
           setupProfile={props.setupProfile}
+          errors={props.errors}
           onSetupProfileChange={props.onSetupProfileChange}
         />
       </div>

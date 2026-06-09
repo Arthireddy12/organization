@@ -6,11 +6,13 @@ export function SetupField({
   children,
   required,
   hint,
+  error,
 }: {
   label: string;
   children: ReactNode;
   required?: boolean;
   hint?: string;
+  error?: string;
 }) {
   return (
     <div className="space-y-1.5">
@@ -20,6 +22,7 @@ export function SetupField({
       </label>
       {children}
       {hint ? <p className="text-[11px] text-slate-500">{hint}</p> : null}
+      {error ? <p className="text-[11px] font-medium text-rose-600">{error}</p> : null}
     </div>
   );
 }

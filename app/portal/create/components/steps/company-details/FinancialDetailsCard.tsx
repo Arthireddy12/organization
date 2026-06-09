@@ -15,10 +15,12 @@ import SetupSelect from "../../SetupSelect";
 export default function FinancialDetailsCard({
   disabled,
   setupProfile,
+  errors,
   onSetupProfileChange,
 }: {
   disabled: boolean;
   setupProfile: OrganizationSetupProfile;
+  errors?: Partial<Record<string, string>>;
   onSetupProfileChange: (field: keyof OrganizationSetupProfile, value: string) => void;
 }) {
   return (
@@ -62,32 +64,43 @@ export default function FinancialDetailsCard({
           </SetupField>
         </div>
 
-        <SetupField label="PAN Number">
+        <SetupField label="PAN Number" error={errors?.panNumber}>
           <Input
             value={setupProfile.panNumber}
-            onChange={(event) => onSetupProfileChange("panNumber", event.target.value)}
+            onChange={(event) => onSetupProfileChange("panNumber", event.target.value.toUpperCase())}
             readOnly={disabled}
             placeholder="Enter PAN number"
           />
         </SetupField>
 
-        <SetupField label="TAN Number">
+        <SetupField label="Aadhaar Number" error={errors?.aadhaarNumber} hint="Optional, 12 digits">
           <Input
-            value={setupProfile.tanNumber}
-            onChange={(event) => onSetupProfileChange("tanNumber", event.target.value)}
+            value={setupProfile.aadhaarNumber}
+            onChange={(event) =>
+              onSetupProfileChange("aadhaarNumber", event.target.value.replace(/\s+/g, ""))
+            }
             readOnly={disabled}
-            placeholder="Enter TAN number"
+            placeholder="Enter Aadhaar number"
           />
         </SetupField>
 
-        <SetupField label="PF Account Number">
+        <SetupField label="TAN Number" error={errors?.tanNumber}>
           <Input
-            value={setupProfile.pfAccountNumber}
-            onChange={(event) => onSetupProfileChange("pfAccountNumber", event.target.value)}
-            readOnly={disabled}
-            placeholder="Enter PF account number"
-          />
-        </SetupField>
+            value={setupProfile.tanNumber}
+            onChange={(event) => onSetupProfileChange("tanNumber", event.target.value.toUpperCase())}
+              readOnly={disabled}
+              placeholder="Enter TAN number"
+            />
+          </SetupField>
+
+        <SetupField label="PF Account Number" error={errors?.pfAccountNumber}>
+            <Input
+              value={setupProfile.pfAccountNumber}
+              onChange={(event) => onSetupProfileChange("pfAccountNumber", event.target.value)}
+              readOnly={disabled}
+              placeholder="Enter PF account number"
+            />
+          </SetupField>
       </div>
     </section>
   );

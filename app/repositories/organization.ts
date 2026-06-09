@@ -47,15 +47,27 @@ export async function findOrganizationByAny(
   const organizations = await getCollection<OrganizationDocument>(COLLECTIONS.ORGANIZATIONS);
   const excludedObjectId = excludeId ? toObjectId(excludeId) : null;
 
-  return organizations.findOne(
-    {
-      $and: [
-        { $or: filters as Filter<OrganizationDocument>[] },
-        ...(excludedObjectId ? [{ _id: { $ne: excludedObjectId } }] : []),
-      ],
-    },
-    { projection: { _id: 1 } },
-  );
+  return toPlain(
+    await organizations.findOne(
+      {
+        $and: [
+          { $or: filters as Filter<OrganizationDocument>[] },
+          ...(excludedObjectId ? [{ _id: { $ne: excludedObjectId } }] : []),
+        ],
+      },
+      {
+        projection: {
+          _id: 1,
+          name: 1,
+          email: 1,
+          adminEmail: 1,
+          slug: 1,
+          systemDomain: 1,
+          customDomain: 1,
+        },
+      },
+    ),
+  ) as OrganizationRecord | null;
 }
 
 export async function organizationExistsById(id: string) {

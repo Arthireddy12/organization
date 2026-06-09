@@ -34,8 +34,10 @@ export async function listDepartments(organizationId?: string | null) {
 
   return Promise.all(departmentRecords.map(async (department) => {
     const departmentId = toObjectId(department.id);
+    const designations = Array.isArray(department.designations) ? department.designations : [];
     return {
       ...department,
+      designations,
       organization: typeof department.organizationId === "string"
         ? organizationsById.get(department.organizationId) ?? null
         : null,

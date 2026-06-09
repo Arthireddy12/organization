@@ -13,6 +13,7 @@ type CompanyBasicsRowProps = {
   organizationName: string;
   industry: string;
   setupProfile: OrganizationSetupProfile;
+  errors?: Partial<Record<string, string>>;
   onOrganizationNameChange: (value: string) => void;
   onIndustryChange: (value: string) => void;
   onSetupProfileChange: (field: keyof OrganizationSetupProfile, value: string) => void;
@@ -23,6 +24,7 @@ export default function CompanyBasicsRow({
   organizationName,
   industry,
   setupProfile,
+  errors,
   onOrganizationNameChange,
   onIndustryChange,
   onSetupProfileChange,
@@ -31,7 +33,12 @@ export default function CompanyBasicsRow({
     <div className="rounded-sm border border-slate-200 px-4 py-4">
       <SetupSectionTitle title="Basic Information" />
       <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <SetupField label="Display Name" required hint="Name as it appears in HRMS">
+        <SetupField
+          label="Display Name"
+          required
+          hint="Name as it appears in HRMS"
+          error={errors?.organizationName}
+        >
           <Input
             value={organizationName}
             onChange={(event) => onOrganizationNameChange(event.target.value)}
@@ -50,7 +57,7 @@ export default function CompanyBasicsRow({
           />
         </SetupField>
 
-        <SetupField label="Industry Vertical" required>
+        <SetupField label="Industry Vertical" required error={errors?.industry}>
           <SetupSelect
             value={industry}
             options={industryOptions}

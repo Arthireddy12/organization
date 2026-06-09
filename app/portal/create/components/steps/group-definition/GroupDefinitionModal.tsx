@@ -20,6 +20,7 @@ import type {
   GroupDefinitionModule,
   GroupDefinitionRule,
 } from "@/lib/organization-group-definition";
+import { validateGroupDefinitionDraft } from "@/lib/organization-setup-validation";
 import { SetupField } from "../../SetupField";
 
 function createEmptyValues(module: GroupDefinitionModule | null) {
@@ -67,6 +68,7 @@ export default function GroupDefinitionModal({
   const [attributeIds, setAttributeIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
 
   const attributeNameById = useMemo(
     () =>
@@ -104,15 +106,16 @@ export default function GroupDefinitionModal({
     setDraftValues(createEmptyValues(module));
     setAttributeIds([]);
     setEditingId(null);
+    setErrors({});
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 px-4 backdrop-blur-[2px]">
-      <div className="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_28px_100px_rgba(15,23,42,0.18)]">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-[#5f92c3] px-6 py-5 text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-sky-950/18 px-4 backdrop-blur-[2px]">
+      <div className="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border border-sky-100 bg-white shadow-[0_28px_100px_rgba(14,165,233,0.16)]">
+        <div className="flex items-start justify-between gap-4 border-b border-sky-200 bg-gradient-to-r from-sky-600 to-blue-600 px-6 py-5 text-white">
           <div>
             <h3 className="text-2xl font-semibold">{module.label}</h3>
-            <p className="mt-1 text-sm text-blue-50">{module.description}</p>
+            <p className="mt-1 text-sm text-sky-50">{module.description}</p>
           </div>
           <Button
             type="button"
@@ -134,7 +137,12 @@ export default function GroupDefinitionModal({
                 </SetupField>
 
                 {module.fields.map((field) => (
-                  <SetupField key={field.key} label={field.label} required>
+                  <SetupField
+                    key={field.key}
+                    label={field.label}
+                    required
+                    error={errors[`moduleField:${field.key}`]}
+                  >
                     {field.type === "select" ? (
                       <Dropdown
                         value={draftValues[field.key] ?? ""}
@@ -172,6 +180,7 @@ export default function GroupDefinitionModal({
                       ? "No attributes available. Add attributes in step 2 first."
                       : "Choose one or more attributes for this rule."
                   }
+                  error={errors.groupAttributes}
                 >
                   <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                     {selectedAttributes.length === 0 ? (
@@ -234,6 +243,16 @@ export default function GroupDefinitionModal({
                     variant="primary"
                     disabled={!canSave}
                     onClick={() => {
+                      const validation = validateGroupDefinitionDraft({
+                        fields: module.fields,
+                        values: draftValues,
+                        attributeIds,
+                      });
+                      if (!validation.valid) {
+                        setErrors(validation.errors);
+                        return;
+                      }
+                      setErrors({});
                       onSave(module.id, {
                         id: editingId ?? undefined,
                         attributeIds,
@@ -322,6 +341,7 @@ export default function GroupDefinitionModal({
                                     ...createEmptyValues(module),
                                     ...rule.values,
                                   });
+                                  setErrors({});
                                 }}
                               >
                                 Edit

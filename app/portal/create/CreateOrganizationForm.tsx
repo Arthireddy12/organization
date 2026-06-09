@@ -19,6 +19,29 @@ type CreateOrganizationFormProps = {
   initialStep?: 1 | 2 | 3 | 4 | 5;
 };
 
+function getCurrentStepErrorMessage(
+  step: 1 | 2 | 3 | 4 | 5,
+  errors: Record<string, string>,
+) {
+  if (errors.form) {
+    return errors.form;
+  }
+
+  if (step === 2) {
+    return errors.selectedIds;
+  }
+
+  if (step === 4) {
+    return Object.entries(errors).find(([key]) => key.startsWith("packet:"))?.[1];
+  }
+
+  if (step === 5) {
+    return Object.entries(errors).find(([key]) => key.startsWith("group:"))?.[1];
+  }
+
+  return null;
+}
+
 export default function CreateOrganizationForm({
   mode,
   initialOrganization,
@@ -27,6 +50,10 @@ export default function CreateOrganizationForm({
   const form = useCreateOrganizationForm({ mode, initialOrganization, initialStep });
   const isFirstStep = form.activeStep === 1;
   const isLastStep = form.activeStep === 5;
+  const currentStepErrorMessage = getCurrentStepErrorMessage(
+    form.activeStep,
+    form.fieldErrors,
+  );
 
   return (
     <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6">
@@ -43,7 +70,17 @@ export default function CreateOrganizationForm({
           }}
           className="space-y-4"
         >
-          <SetupStepper activeStep={form.activeStep} onStepChange={form.setActiveStep} />
+          <SetupStepper
+            activeStep={form.activeStep}
+            completedSteps={form.completedSteps}
+            onStepChange={form.setActiveStep}
+          />
+
+          {currentStepErrorMessage ? (
+            <div className="rounded-sm border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+              {currentStepErrorMessage}
+            </div>
+          ) : null}
 
           {form.activeStep === 1 ? (
             <>
@@ -52,6 +89,7 @@ export default function CreateOrganizationForm({
                 organizationName={form.organizationName}
                 industry={form.industry}
                 setupProfile={form.setupProfile}
+                errors={form.fieldErrors}
                 onOrganizationNameChange={form.setOrganizationName}
                 onIndustryChange={form.setIndustry}
                 onSetupProfileChange={form.updateSetupProfile}
@@ -84,6 +122,7 @@ export default function CreateOrganizationForm({
                 onSuperAdminPasswordChange={form.setSuperAdminPassword}
                 onAdminPhoneChange={form.setAdminPhone}
                 onDesignationChange={form.setDesignation}
+                errors={form.fieldErrors}
               />
             </>
           ) : form.activeStep === 2 ? (

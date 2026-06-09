@@ -15,6 +15,7 @@ import {
 import { Dropdown } from "@/components/common/dropdown";
 import { Input } from "@/components/common/input";
 import type { OrganizationAttribute } from "@/lib/organization-attributes";
+import { validatePacketAssignmentDraft } from "@/lib/organization-setup-validation";
 import {
   packetPositionOptions,
   type PacketAssignment,
@@ -47,6 +48,7 @@ export default function PacketDetailsModal({
   const [attributeIds, setAttributeIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
 
   const filteredAssignments = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -68,18 +70,19 @@ export default function PacketDetailsModal({
     setSuperAccess(false);
     setAttributeIds([]);
     setEditingId(null);
+    setErrors({});
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 px-4 backdrop-blur-[2px]">
-      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_28px_100px_rgba(15,23,42,0.18)]">
-        <div className="flex items-start justify-between gap-4 border-b border-blue-200 bg-blue-600 px-6 py-5 text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-sky-950/18 px-4 backdrop-blur-[2px]">
+      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-sky-100 bg-white shadow-[0_28px_100px_rgba(14,165,233,0.16)]">
+        <div className="flex items-start justify-between gap-4 border-b border-sky-200 bg-gradient-to-r from-sky-600 to-blue-600 px-6 py-5 text-white">
           <div>
             <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white">
               {item.kind === "report" ? "Reports" : "Screens"}
             </div>
             <h3 className="mt-3 text-2xl font-semibold text-white">{item.label}</h3>
-            <p className="mt-1 text-sm text-blue-50">
+            <p className="mt-1 text-sm text-sky-50">
               Configure position-wise access, super access, and selected attribute visibility.
             </p>
           </div>
@@ -101,7 +104,7 @@ export default function PacketDetailsModal({
                 <SetupField label={item.kind === "report" ? "Reports" : "Screens"} required>
                   <Input value={item.label} readOnly />
                 </SetupField>
-                <SetupField label="Position Code" required>
+              <SetupField label="Position Code" required error={errors.positionCode}>
                   <Dropdown
                     value={positionCode}
                     options={packetPositionOptions.map((option) => ({
@@ -134,6 +137,11 @@ export default function PacketDetailsModal({
                   <p className="mt-1 text-xs text-slate-500">
                     Choose which organization attributes are visible for this packet access.
                   </p>
+                  {errors.packetAttributes ? (
+                    <p className="mt-2 text-[11px] font-medium text-rose-600">
+                      {errors.packetAttributes}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {selectedAttributes.map((attribute) => (
@@ -168,7 +176,15 @@ export default function PacketDetailsModal({
                 <Button
                   variant="primary"
                   onClick={() => {
-                    if (!positionCode.trim()) return;
+                    const validation = validatePacketAssignmentDraft({
+                      positionCode,
+                      attributeIds,
+                    });
+                    if (!validation.valid) {
+                      setErrors(validation.errors);
+                      return;
+                    }
+                    setErrors({});
                     onSave(item.id, {
                       id: editingId ?? undefined,
                       positionCode,
@@ -242,6 +258,7 @@ export default function PacketDetailsModal({
                                   setPositionCode(assignment.positionCode);
                                   setSuperAccess(assignment.superAccess);
                                   setAttributeIds(assignment.attributeIds);
+                                  setErrors({});
                                 }}
                               >
                                 Edit

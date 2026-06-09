@@ -5,6 +5,7 @@ import { Boxes, Download, Upload, X } from "lucide-react";
 import { Button } from "@/components/common/button";
 import { Input } from "@/components/common/input";
 import type { AttributeUnit, OrganizationAttribute } from "@/lib/organization-attributes";
+import { validateAttributeUnitDraft } from "@/lib/organization-setup-validation";
 import { SetupField } from "../../SetupField";
 import AttributeUnitTable from "./AttributeUnitTable";
 
@@ -40,6 +41,7 @@ export default function AttributeUnitModal({
   const [draftCode, setDraftCode] = useState("");
   const [draftDescription, setDraftDescription] = useState("");
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!open || !attribute) return null;
@@ -49,6 +51,7 @@ export default function AttributeUnitModal({
     setDraftCode("");
     setDraftDescription("");
     setEditingUnitId(null);
+    setErrors({});
   }
 
   function closeModal() {
@@ -57,7 +60,15 @@ export default function AttributeUnitModal({
   }
 
   function submitUnit() {
-    if (!draftCode.trim() || !draftDescription.trim()) return;
+    const validation = validateAttributeUnitDraft({
+      code: draftCode,
+      description: draftDescription,
+    });
+    if (!validation.valid) {
+      setErrors(validation.errors);
+      return;
+    }
+    setErrors({});
     onSaveUnit(activeAttribute.id, {
       id: editingUnitId ?? undefined,
       code: draftCode.trim(),
@@ -67,19 +78,19 @@ export default function AttributeUnitModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/18 px-4 backdrop-blur-[3px]">
-      <div className="w-full max-w-5xl overflow-hidden rounded-[24px] border border-slate-200 bg-[#fcfdff] shadow-[0_28px_100px_rgba(15,23,42,0.18)]">
-        <div className="border-b border-slate-200 bg-white px-6 py-5">
+    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-sky-950/18 px-4 py-6 backdrop-blur-[3px] sm:py-8">
+      <div className="mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-sky-100 bg-[#fcfdff] shadow-[0_28px_100px_rgba(14,165,233,0.16)] sm:max-h-[calc(100dvh-4rem)]">
+        <div className="border-b border-sky-200 bg-gradient-to-r from-sky-600 to-blue-600 px-6 py-5 text-white">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white">
                 <Boxes className="h-3.5 w-3.5" />
                 Attribute Unit Setup
               </div>
-              <h3 className="mt-3 text-[28px] font-semibold leading-tight text-slate-800">
+              <h3 className="mt-3 text-[28px] font-semibold leading-tight text-white">
                 Add New Unit ({activeAttribute.label})
               </h3>
-              <p className="mt-1 max-w-2xl text-sm text-slate-500">
+              <p className="mt-1 max-w-2xl text-sm text-sky-50">
                 Create unit codes for this attribute, upload them in bulk, and keep the list easy
                 to manage from one place.
               </p>
@@ -88,7 +99,7 @@ export default function AttributeUnitModal({
               variant="ghost"
               size="icon"
               onClick={closeModal}
-              className="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 hover:text-slate-800"
+              className="h-10 w-10 rounded-full border border-white/20 bg-white/10 text-white shadow-sm hover:bg-white/20 hover:text-white"
               aria-label="Close attribute unit popup"
             >
               <X className="h-4 w-4" />
@@ -96,7 +107,7 @@ export default function AttributeUnitModal({
           </div>
         </div>
 
-        <div className="space-y-5 px-6 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-5 px-6 py-6">
           <div className="grid gap-3 lg:grid-cols-[1.35fr_0.9fr_0.9fr]">
             <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-700">
@@ -107,7 +118,7 @@ export default function AttributeUnitModal({
                 Add business units or values under this selected organization attribute.
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-sky-100 bg-white p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Existing Units
               </p>
@@ -116,7 +127,7 @@ export default function AttributeUnitModal({
                 Saved values currently mapped for this field.
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-sky-100 bg-white p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Quick Action
               </p>
@@ -129,7 +140,7 @@ export default function AttributeUnitModal({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
             <div className="mb-4">
               <h4 className="text-base font-semibold text-slate-800">Create Or Update Unit</h4>
               <p className="mt-1 text-sm text-slate-500">
@@ -137,7 +148,7 @@ export default function AttributeUnitModal({
               </p>
             </div>
             <div className="grid gap-4 md:grid-cols-[1.35fr_0.6fr_auto]">
-              <SetupField label="Unit Description">
+              <SetupField label="Unit Description" error={errors.unitDescription}>
                 <Input
                   value={draftDescription}
                   onChange={(event) => setDraftDescription(event.target.value)}
@@ -146,7 +157,7 @@ export default function AttributeUnitModal({
                 />
               </SetupField>
 
-              <SetupField label="Unit Code">
+              <SetupField label="Unit Code" error={errors.unitCode}>
                 <Input
                   value={draftCode}
                   onChange={(event) => setDraftCode(event.target.value)}
@@ -167,9 +178,9 @@ export default function AttributeUnitModal({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-3">
             <div>
-              <h4 className="text-sm font-semibold text-slate-700">Bulk Actions</h4>
+              <h4 className="text-sm font-semibold text-sky-800">Bulk Actions</h4>
               <p className="text-xs text-slate-500">
                 Download the current list or upload a prepared CSV file.
               </p>
@@ -177,7 +188,7 @@ export default function AttributeUnitModal({
             <div className="flex flex-wrap gap-3">
               <Button
                 variant="secondary"
-                className="h-11 rounded-xl border-slate-200 bg-white px-4"
+                className="h-11 rounded-xl border-sky-100 bg-white px-4 text-sky-700 hover:border-sky-200 hover:bg-sky-50"
                 icon={<Download className="h-4 w-4" />}
                 onClick={() => downloadUnitsCsv(activeAttribute, units)}
               >
@@ -185,7 +196,7 @@ export default function AttributeUnitModal({
               </Button>
               <Button
                 variant="secondary"
-                className="h-11 rounded-xl border-slate-200 bg-white px-4"
+                className="h-11 rounded-xl border-sky-100 bg-white px-4 text-sky-700 hover:border-sky-200 hover:bg-sky-50"
                 icon={<Upload className="h-4 w-4" />}
                 onClick={() => fileInputRef.current?.click()}
               >
@@ -229,6 +240,7 @@ export default function AttributeUnitModal({
               setDraftCode(unit.code);
               setDraftDescription(unit.description);
               setEditingUnitId(unit.id);
+              setErrors({});
             }}
             onDelete={(unitId) => onDeleteUnit(activeAttribute.id, unitId)}
           />

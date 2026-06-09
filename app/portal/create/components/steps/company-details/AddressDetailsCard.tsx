@@ -10,17 +10,23 @@ import {
 export default function AddressDetailsCard({
   disabled,
   setupProfile,
+  errors,
   onSetupProfileChange,
 }: {
   disabled: boolean;
   setupProfile: OrganizationSetupProfile;
+  errors?: Partial<Record<string, string>>;
   onSetupProfileChange: (field: keyof OrganizationSetupProfile, value: string) => void;
 }) {
   return (
     <section className={setupCardClassName}>
       <SetupSectionTitle title="Basic Information" />
       <div className="mt-4 space-y-4">
-        <SetupField label="Street Address or P.O. Box" required>
+        <SetupField
+          label="Street Address or P.O. Box"
+          required
+          error={errors?.streetAddress}
+        >
           <Textarea
             value={setupProfile.streetAddress}
             onChange={(event) => onSetupProfileChange("streetAddress", event.target.value)}
@@ -31,7 +37,7 @@ export default function AddressDetailsCard({
         </SetupField>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <SetupField label="Town/City">
+          <SetupField label="Town/City" error={errors?.city}>
             <Input
               value={setupProfile.city}
               onChange={(event) => onSetupProfileChange("city", event.target.value)}
@@ -40,7 +46,7 @@ export default function AddressDetailsCard({
             />
           </SetupField>
 
-          <SetupField label="State/Region">
+          <SetupField label="State/Region" error={errors?.stateRegion}>
             <Input
               value={setupProfile.stateRegion}
               onChange={(event) => onSetupProfileChange("stateRegion", event.target.value)}
@@ -51,7 +57,7 @@ export default function AddressDetailsCard({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <SetupField label="Postal Code">
+          <SetupField label="Postal Code" error={errors?.postalCode}>
             <Input
               value={setupProfile.postalCode}
               onChange={(event) => onSetupProfileChange("postalCode", event.target.value)}
@@ -72,7 +78,7 @@ export default function AddressDetailsCard({
           </SetupField>
         </div>
 
-        <SetupField label="Website">
+        <SetupField label="Website" error={errors?.website}>
           <Input
             value={setupProfile.website}
             onChange={(event) => onSetupProfileChange("website", event.target.value)}

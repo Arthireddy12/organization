@@ -13,12 +13,14 @@ function DashboardPages({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-white text-slate-900">
       <Sidebar />
       <div
-        className={`flex flex-1 flex-col bg-white transition-all duration-300 ${
+        className={`flex min-h-screen min-w-0 flex-1 flex-col bg-white transition-all duration-300 ${
           collapsed ? "lg:ml-[96px]" : "lg:ml-[280px]"
         }`}
       >
         <Navbar />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-white">{children}</main>
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-white">
+          {children}
+        </main>
       </div>
     </div>
   );

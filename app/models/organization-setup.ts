@@ -1,0 +1,33 @@
+import type { OrganizationAttributeSetup } from "@/lib/organization-attributes";
+import type { OrganizationGroupDefinitionSetup } from "@/lib/organization-group-definition";
+import type { OrganizationPacketSetup } from "@/lib/organization-packets";
+import type { OrganizationRoleAccessSetup } from "@/lib/organization-role-access";
+import type { OrganizationSetupProfile } from "@/lib/organization-setup";
+
+export type OrganizationSetupSnapshot = {
+  id: string;
+  organizationName: string;
+  organizationEmail: string;
+  phoneNumber: string;
+  industry: string;
+  address: string;
+  superAdminName: string;
+  superAdminEmail: string;
+  adminPhone: string;
+  designation: string;
+  systemDomain: string;
+  customDomain: string;
+  startDate: string | null;
+  autoDeactivateDate: string | null;
+  isActive: boolean;
+  userLimit: number;
+  moduleAccess: string[];
+  setupProfile?: OrganizationSetupProfile | null;
+  attributeSetup?: OrganizationAttributeSetup | null;
+  roleAccessSetup?: OrganizationRoleAccessSetup | null;
+  groupDefinitionSetup?: OrganizationGroupDefinitionSetup | null;
+  packetSetup?: OrganizationPacketSetup | null;
+  setupStatus?: "DRAFT" | "COMPLETED" | null;
+  setupCurrentStep?: number | null;
+  setupCompletedSteps?: number[] | null;
+};

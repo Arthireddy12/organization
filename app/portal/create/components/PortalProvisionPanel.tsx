@@ -29,6 +29,7 @@ type PortalProvisionPanelProps = {
   onSuperAdminPasswordChange: (value: string) => void;
   onAdminPhoneChange: (value: string) => void;
   onDesignationChange: (value: string) => void;
+  errors?: Partial<Record<string, string>>;
 };
 
 export default function PortalProvisionPanel({
@@ -56,6 +57,7 @@ export default function PortalProvisionPanel({
   onSuperAdminPasswordChange,
   onAdminPhoneChange,
   onDesignationChange,
+  errors,
 }: PortalProvisionPanelProps) {
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
@@ -72,7 +74,7 @@ export default function PortalProvisionPanel({
           Portal Access Details
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <SetupField label="Organization Email" required>
+          <SetupField label="Organization Email" required error={errors?.organizationEmail}>
             <Input
               value={organizationEmail}
               onChange={(event) => onOrganizationEmailChange(event.target.value)}
@@ -82,7 +84,7 @@ export default function PortalProvisionPanel({
             />
           </SetupField>
 
-          <SetupField label="Phone Number" required>
+          <SetupField label="Phone Number" required error={errors?.phoneNumber}>
             <Input
               value={phoneNumber}
               onChange={(event) => onPhoneNumberChange(event.target.value)}
@@ -97,6 +99,7 @@ export default function PortalProvisionPanel({
               label="Domain Type"
               required
               hint="Choose either a system domain or a custom domain"
+              error={errors?.domainType}
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 <button
@@ -135,15 +138,20 @@ export default function PortalProvisionPanel({
 
           {domainType === "system" ? (
             <div className="md:col-span-2">
-              <SetupField label="System Domain" required hint={`Suffix: ${SYSTEM_DOMAIN_SUFFIX}`}>
+              <SetupField
+                label="System Domain"
+                required
+                hint={`Suffix: ${SYSTEM_DOMAIN_SUFFIX}`}
+                error={errors?.systemDomainName}
+              >
                 <div className="flex">
                   <Input
-                    className="rounded-r-none"
                     value={systemDomainName}
                     onChange={(event) => onSystemDomainNameChange(event.target.value)}
                     readOnly={isViewMode}
                     placeholder="Enter subdomain"
                     required
+                    className="rounded-r-none"
                   />
                   <div className="flex items-center rounded-r-lg border border-l-0 border-slate-200 bg-slate-50 px-3 text-sm text-slate-600 shadow-sm">
                     {SYSTEM_DOMAIN_SUFFIX}
@@ -153,7 +161,12 @@ export default function PortalProvisionPanel({
             </div>
           ) : (
             <div className="md:col-span-2">
-              <SetupField label="Custom Domain" required hint="Example: hr.yourcompany.com">
+              <SetupField
+                label="Custom Domain"
+                required
+                hint="Example: hr.yourcompany.com"
+                error={errors?.customDomain}
+              >
                 <Input
                   value={customDomain}
                   onChange={(event) => onCustomDomainChange(event.target.value)}
@@ -172,7 +185,11 @@ export default function PortalProvisionPanel({
             </div>
           </SetupField>
 
-          <SetupField label="Subscription End Date" required>
+          <SetupField
+            label="Subscription End Date"
+            required
+            error={errors?.autoDeactivateDate}
+          >
             <Input
               type="date"
               value={autoDeactivateDate}
@@ -194,7 +211,7 @@ export default function PortalProvisionPanel({
           Primary Admin Details
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <SetupField label="Admin Name" required>
+          <SetupField label="Admin Name" required error={errors?.superAdminName}>
             <Input
               value={superAdminName}
               onChange={(event) => onSuperAdminNameChange(event.target.value)}
@@ -204,7 +221,7 @@ export default function PortalProvisionPanel({
             />
           </SetupField>
 
-          <SetupField label="Admin Email" required>
+          <SetupField label="Admin Email" required error={errors?.superAdminEmail}>
             <Input
               value={superAdminEmail}
               onChange={(event) => onSuperAdminEmailChange(event.target.value)}
@@ -214,7 +231,7 @@ export default function PortalProvisionPanel({
             />
           </SetupField>
 
-          <SetupField label="Admin Phone Number" required>
+          <SetupField label="Admin Phone Number" required error={errors?.adminPhone}>
             <Input
               value={adminPhone}
               onChange={(event) => onAdminPhoneChange(event.target.value)}
@@ -224,7 +241,7 @@ export default function PortalProvisionPanel({
             />
           </SetupField>
 
-          <SetupField label="Designation" required>
+          <SetupField label="Designation" required error={errors?.designation}>
             <Input
               value={designation}
               onChange={(event) => onDesignationChange(event.target.value)}
@@ -236,7 +253,7 @@ export default function PortalProvisionPanel({
 
           {!isEditMode && !isViewMode ? (
             <div className="md:col-span-2">
-              <SetupField label="Admin Password" required>
+              <SetupField label="Admin Password" required error={errors?.superAdminPassword}>
                 <Input
                   type="password"
                   value={superAdminPassword}
