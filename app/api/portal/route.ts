@@ -5,7 +5,7 @@ import {
   listOrganizations,
   updateOrganizationById,
 } from "@/app/repositories/organization";
-import { createUser, deleteUsersByOrganizationId } from "@/app/repositories/user";
+import { createTenantUser } from "@/app/repositories/user";
 import {
   createTenantDatabaseName,
   dropTenantDatabase,
@@ -13,13 +13,36 @@ import {
 } from "@/app/lib/mongodb/tenant";
 import { isDuplicateKeyError } from "@/app/utils/helper";
 import { getSessionFromCookie } from "@/lib/auth";
+import { ensureOrganizationSlugs } from "@/lib/organization-server";
 import { NextResponse } from "next/server";
 import {
-  ensureOrganizationSlugs,
+  buildSystemDomain,
+  normalizeCustomDomain,
   type ModuleAccessObject,
   normalizeModuleAccessToArray,
   normalizeModuleAccessToObject,
 } from "@/lib/organization";
+import {
+  normalizeOrganizationRoleAccessSetup,
+  type OrganizationRoleAccessSetup,
+} from "@/lib/organization-role-access";
+import {
+  normalizeOrganizationAttributeSetup,
+  type OrganizationAttributeSetup,
+} from "@/lib/organization-attributes";
+import {
+  normalizeOrganizationGroupDefinitionSetup,
+  type OrganizationGroupDefinitionSetup,
+} from "@/lib/organization-group-definition";
+import {
+  normalizeOrganizationPacketSetup,
+  type OrganizationPacketSetup,
+} from "@/lib/organization-packets";
+import {
+  buildOrganizationAddressFromSetupProfile,
+  normalizeOrganizationSetupProfile,
+  type OrganizationSetupProfile,
+} from "@/lib/organization-setup";
 import { hash } from "bcryptjs";
 
 type CreateOrganizationBody = {
@@ -30,11 +53,18 @@ type CreateOrganizationBody = {
   address?: string;
   adminPhone?: string;
   designation?: string;
+  systemDomain?: string;
+  customDomain?: string | null;
   moduleAccess?: string[] | Record<string, boolean> | ModuleAccessObject;
   autoDeactivateDate?: string | null;
   superAdminName?: string;
   superAdminEmail?: string;
   superAdminPassword?: string;
+  setupProfile?: OrganizationSetupProfile;
+  attributeSetup?: OrganizationAttributeSetup;
+  roleAccessSetup?: OrganizationRoleAccessSetup;
+  groupDefinitionSetup?: OrganizationGroupDefinitionSetup;
+  packetSetup?: OrganizationPacketSetup;
 };
 
 function slugifyOrganizationName(value: string) {
@@ -72,6 +102,8 @@ function mapOrgToPayload(org: {
   adminPhone: string | null;
   adminDesignation: string | null;
   slug: string | null;
+  systemDomain: string | null;
+  customDomain: string | null;
   createdAt: Date;
   updatedAt: Date;
   planName: string | null;
@@ -87,6 +119,11 @@ function mapOrgToPayload(org: {
   attendanceEnabled: boolean | null;
   recruitmentEnabled: boolean | null;
   notes: string | null;
+  setupProfile: OrganizationSetupProfile | null;
+  attributeSetup: OrganizationAttributeSetup | null;
+  roleAccessSetup: OrganizationRoleAccessSetup | null;
+  groupDefinitionSetup: OrganizationGroupDefinitionSetup | null;
+  packetSetup: OrganizationPacketSetup | null;
 }) {
   return {
     id: org.id,
@@ -100,6 +137,8 @@ function mapOrgToPayload(org: {
     adminPhone: org.adminPhone,
     adminDesignation: org.adminDesignation,
     slug: org.slug,
+    systemDomain: org.systemDomain,
+    customDomain: org.customDomain,
     createdAt: org.createdAt,
     updatedAt: org.updatedAt,
     portal: {
@@ -117,6 +156,11 @@ function mapOrgToPayload(org: {
       attendanceEnabled: org.attendanceEnabled ?? true,
       recruitmentEnabled: org.recruitmentEnabled ?? false,
       notes: org.notes,
+      setupProfile: org.setupProfile ?? null,
+      attributeSetup: org.attributeSetup ?? null,
+      roleAccessSetup: org.roleAccessSetup ?? null,
+      groupDefinitionSetup: org.groupDefinitionSetup ?? null,
+      packetSetup: org.packetSetup ?? null,
     },
   };
 }
@@ -156,9 +200,20 @@ export async function POST(request: Request) {
     const organizationEmail = body.organizationEmail?.trim().toLowerCase();
     const phoneNumber = body.phoneNumber?.trim();
     const industry = body.industry?.trim();
-    const address = body.address?.trim();
+    const normalizedSetupProfile = normalizeOrganizationSetupProfile(body.setupProfile);
+    const normalizedAttributeSetup = normalizeOrganizationAttributeSetup(body.attributeSetup);
+    const normalizedRoleAccessSetup = normalizeOrganizationRoleAccessSetup(body.roleAccessSetup);
+    const normalizedGroupDefinitionSetup = normalizeOrganizationGroupDefinitionSetup(
+      body.groupDefinitionSetup,
+    );
+    const normalizedPacketSetup = normalizeOrganizationPacketSetup(body.packetSetup);
+    const address =
+      buildOrganizationAddressFromSetupProfile(normalizedSetupProfile) ||
+      body.address?.trim();
     const adminPhone = body.adminPhone?.trim();
     const designation = body.designation?.trim();
+    const systemDomain = buildSystemDomain(body.systemDomain ?? "");
+    const customDomain = normalizeCustomDomain(body.customDomain);
     const userLimit = 25;
     const moduleAccess = normalizeModuleAccessToObject(body.moduleAccess ?? []);
     const superAdminName = body.superAdminName?.trim();
@@ -175,6 +230,21 @@ export async function POST(request: Request) {
     if (!organizationEmail) {
       return NextResponse.json(
         { error: "organizationEmail is required" },
+        { status: 400 },
+      );
+    }
+    const hasSystemDomain = Boolean(systemDomain);
+    const hasCustomDomain = Boolean(customDomain);
+
+    if (hasSystemDomain === hasCustomDomain) {
+      return NextResponse.json(
+        { error: "Select either systemDomain or customDomain, but not both" },
+        { status: 400 },
+      );
+    }
+    if (customDomain && systemDomain && customDomain === systemDomain) {
+      return NextResponse.json(
+        { error: "customDomain must be different from systemDomain" },
         { status: 400 },
       );
     }
@@ -221,10 +291,14 @@ export async function POST(request: Request) {
           { email: organizationEmail },
           { adminEmail: superAdminEmail },
           { slug },
+          ...(systemDomain
+            ? [{ systemDomain }, { customDomain: systemDomain }]
+            : []),
+          ...(customDomain ? [{ customDomain }, { systemDomain: customDomain }] : []),
     ]);
     if (existingOrganization) {
       return NextResponse.json(
-        { error: "Organization already exists" },
+        { error: "Organization, admin email, or domain already exists" },
         { status: 409 },
       );
     }
@@ -241,7 +315,14 @@ export async function POST(request: Request) {
         adminEmail: superAdminEmail,
         adminPhone,
         adminDesignation: designation,
+        setupProfile: normalizedSetupProfile,
+        attributeSetup: normalizedAttributeSetup,
+        roleAccessSetup: normalizedRoleAccessSetup,
+        groupDefinitionSetup: normalizedGroupDefinitionSetup,
+        packetSetup: normalizedPacketSetup,
         slug,
+        systemDomain,
+        customDomain,
         createdAt: now,
         updatedAt: now,
         userLimit,
@@ -251,7 +332,10 @@ export async function POST(request: Request) {
         autoDeactivateDate,
     }) as Parameters<typeof mapOrgToPayload>[0] & { tenantDatabase?: string };
 
-    const tenantDatabase = createTenantDatabaseName(slug, created.id);
+    const tenantDatabase = createTenantDatabaseName(
+      systemDomain || customDomain || organizationName,
+      created.id,
+    );
 
     try {
       await provisionTenantDatabase(tenantDatabase, { id: created.id, slug });
@@ -262,17 +346,16 @@ export async function POST(request: Request) {
       });
       created = await updateOrganizationById(created.id, { tenantDatabase }) as typeof created;
 
-      await createUser({
-          name: superAdminName,
-          email: superAdminEmail,
-          password: passwordHash,
-          role: "SUPER_ADMIN",
-          organizationId: created.id,
-          createdAt: now,
+      await createTenantUser(tenantDatabase, {
+        name: superAdminName,
+        email: superAdminEmail,
+        password: passwordHash,
+        role: "SUPER_ADMIN",
+        organizationId: created.id,
+        createdAt: now,
       });
 
     } catch (userCreateError) {
-      await deleteUsersByOrganizationId(created.id);
       await deleteOrganizationById(created.id);
       await dropTenantDatabase(tenantDatabase).catch(() => undefined);
       if (isDuplicateKeyError(userCreateError)) {

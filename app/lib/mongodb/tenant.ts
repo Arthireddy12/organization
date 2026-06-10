@@ -1,4 +1,5 @@
-import { Db, IndexDescription, MongoClient } from "mongodb";
+import type { Collection, Document, IndexDescription } from "mongodb";
+import { Db, MongoClient } from "mongodb";
 
 const globalForMongo = globalThis as unknown as {
   tenantMongoClientPromise?: Promise<MongoClient>;
@@ -24,20 +25,21 @@ if (process.env.NODE_ENV === "development") {
   tenantClientPromise = client.connect();
 }
 
-export function createTenantDatabaseName(slug: string, organizationId: string) {
-  const safeSlug = slug
+export function createTenantDatabaseName(systemDomain: string, organizationId: string) {
+  const safeDomainLabel = systemDomain
     .toLowerCase()
-    .replace(/[^a-z0-9_]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 27);
+    .replace(/\.procorhrms\.com$/, "")
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
   const idSuffix = organizationId.slice(-6).toLowerCase();
 
-  return `${safeSlug || "organization"}_org_${idSuffix}`;
+  return `${safeDomainLabel || "organization"}-db-${idSuffix}`;
 }
 
 export async function getTenantDatabase(databaseName: string): Promise<Db> {
-  if (!/^[a-z0-9_]+$/.test(databaseName)) {
+  if (!/^[a-z0-9_-]+$/.test(databaseName)) {
     throw new Error("Invalid tenant database name");
   }
   const client = await tenantClientPromise;
@@ -82,11 +84,11 @@ function validateCollectionName(collectionName: string) {
   }
 }
 
-export async function ensureTenantCollection(
+export async function ensureTenantCollection<T extends Document>(
   databaseName: string,
   collectionName: string,
   indexes: IndexDescription[] = [],
-) {
+): Promise<Collection<T>> {
   validateCollectionName(collectionName);
 
   const database = await getTenantDatabase(databaseName);
@@ -102,5 +104,5 @@ export async function ensureTenantCollection(
     await database.collection(collectionName).createIndexes(indexes);
   }
 
-  return database.collection(collectionName);
+  return database.collection<T>(collectionName);
 }

@@ -1,4 +1,4 @@
-import type { IndexDescription } from "mongodb";
+import type { Document, IndexDescription } from "mongodb";
 import {
   findOrganizationById,
   findOrganizationBySlug,
@@ -24,7 +24,7 @@ export async function getOrganizationTenantDatabaseBySlug(slug: string) {
   return getTenantDatabase(await requireTenantDatabaseName(organization));
 }
 
-export async function getOrganizationTenantCollection(
+export async function getOrganizationTenantCollection<T extends Document>(
   organizationId: string,
   collectionName: string,
   indexes: IndexDescription[] = [],
@@ -34,5 +34,5 @@ export async function getOrganizationTenantCollection(
     await requireTenantDatabaseName(organization),
     collectionName,
     indexes,
-  );
+  ) as Promise<import("mongodb").Collection<T>>;
 }

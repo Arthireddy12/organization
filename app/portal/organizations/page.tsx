@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 import { getSessionFromCookie } from "@/lib/auth";
 import { listOrganizationsWithUserCounts } from "@/app/repositories/organization";
 import {
-  ensureOrganizationSlugs,
   normalizeModuleAccessToArray,
 } from "@/lib/organization";
+import { ensureOrganizationSlugs } from "@/lib/organization-server";
 import OrganizationsClient, { type OrganizationListItem } from "./OrganizationsClient";
 
 type PlainOrganization = {

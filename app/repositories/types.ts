@@ -1,3 +1,9 @@
+import type { OrganizationRoleAccessSetup } from "@/lib/organization-role-access";
+import type { OrganizationAttributeSetup } from "@/lib/organization-attributes";
+import type { OrganizationGroupDefinitionSetup } from "@/lib/organization-group-definition";
+import type { OrganizationPacketSetup } from "@/lib/organization-packets";
+import type { OrganizationSetupProfile } from "@/lib/organization-setup";
+
 export type DatabaseRecord = {
   id: string;
   [key: string]: unknown;
@@ -14,6 +20,8 @@ export type OrganizationRecord = DatabaseRecord & {
   adminPhone?: string | null;
   adminDesignation?: string | null;
   slug?: string | null;
+  systemDomain?: string | null;
+  customDomain?: string | null;
   tenantDatabase?: string | null;
   planName?: string | null;
   userLimit?: number | null;
@@ -28,6 +36,15 @@ export type OrganizationRecord = DatabaseRecord & {
   recruitmentEnabled?: boolean | null;
   storageLimitGb?: number | null;
   notes?: string | null;
+  setupProfile?: OrganizationSetupProfile | null;
+  attributeSetup?: OrganizationAttributeSetup | null;
+  roleAccessSetup?: OrganizationRoleAccessSetup | null;
+  groupDefinitionSetup?: OrganizationGroupDefinitionSetup | null;
+  packetSetup?: OrganizationPacketSetup | null;
+  setupStatus?: "DRAFT" | "COMPLETED" | null;
+  setupCurrentStep?: number | null;
+  setupCompletedSteps?: number[] | null;
+  setupLastSavedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

@@ -1,4 +1,6 @@
 import { COLLECTIONS, getCollection } from "@/app/lib/mongodb/collection";
+import { getOrganizationTenantCollection } from "@/app/lib/mongodb/tenant-context";
+import { ensureTenantCollection } from "@/app/lib/mongodb/tenant";
 import type { OrganizationDocument } from "@/app/models/organization";
 import type { UserDocument } from "@/app/models/user";
 import { toObjectId, toPlain } from "@/app/utils/helper";
@@ -41,6 +43,76 @@ export async function createUser(data: Record<string, unknown>) {
   } as unknown as UserDocument;
   const result = await users.insertOne(user);
   return toPlain({ ...user, _id: result.insertedId }) as UserRecord;
+}
+
+export async function createTenantUser(
+  tenantDatabaseName: string,
+  data: Record<string, unknown>,
+) {
+  const users = await ensureTenantCollection<UserDocument>(tenantDatabaseName, COLLECTIONS.USERS, [
+    { key: { email: 1 }, unique: true },
+    { key: { organizationId: 1 } },
+  ]);
+  const organizationId =
+    typeof data.organizationId === "string" ? toObjectId(data.organizationId) : data.organizationId;
+  const user = {
+    role: "EMPLOYEE",
+    organizationId: null,
+    resetOtpHash: null,
+    resetOtpExpiresAt: null,
+    resetOtpRequestedAt: null,
+    createdAt: new Date(),
+    ...data,
+    ...(organizationId !== undefined ? { organizationId } : {}),
+  } as unknown as UserDocument;
+  const result = await users.insertOne(user);
+  return toPlain({ ...user, _id: result.insertedId }) as UserRecord;
+}
+
+export async function upsertTenantSuperAdminUser(
+  tenantDatabaseName: string,
+  data: {
+    organizationId: string;
+    name: string;
+    email: string;
+    password?: string;
+  },
+) {
+  const users = await ensureTenantCollection<UserDocument>(tenantDatabaseName, COLLECTIONS.USERS, [
+    { key: { email: 1 }, unique: true },
+    { key: { organizationId: 1 } },
+  ]);
+  const organizationId = toObjectId(data.organizationId);
+  const now = new Date();
+
+  return toPlain(
+    await users.findOneAndUpdate(
+      {
+        role: "SUPER_ADMIN",
+        ...(organizationId ? { organizationId } : {}),
+      },
+      {
+        $set: {
+          name: data.name,
+          email: data.email,
+          role: "SUPER_ADMIN",
+          ...(organizationId ? { organizationId } : {}),
+          ...(data.password ? { password: data.password } : {}),
+          updatedAt: now,
+        },
+        $setOnInsert: {
+          createdAt: now,
+          resetOtpHash: null,
+          resetOtpExpiresAt: null,
+          resetOtpRequestedAt: null,
+        },
+      },
+      {
+        upsert: true,
+        returnDocument: "after",
+      },
+    ),
+  ) as UserRecord | null;
 }
 
 export async function deleteUsersByOrganizationId(organizationId: string) {
@@ -88,4 +160,48 @@ export async function listUsers(filters: {
       ? organizationsById.get(user.organizationId) ?? null
       : null,
   }));
+}
+
+export async function listTenantUsersByOrganizationId(
+  organizationId: string,
+  filters: { role?: string } = {},
+) {
+  const users = await getOrganizationTenantCollection<UserDocument>(
+    organizationId,
+    COLLECTIONS.USERS,
+    [
+    { key: { email: 1 }, unique: true },
+    { key: { organizationId: 1 } },
+    ],
+  );
+  const query: Filter<UserDocument> = {
+    ...(filters.role ? { role: filters.role as UserDocument["role"] } : {}),
+  };
+
+  return toPlain(
+    await users
+      .find(query, {
+        projection: {
+          name: 1,
+          email: 1,
+          role: 1,
+          createdAt: 1,
+          organizationId: 1,
+        },
+      })
+      .sort({ createdAt: -1 })
+      .toArray(),
+  ) as UserRecord[];
+}
+
+export async function countTenantUsersByOrganizationId(organizationId: string) {
+  const users = await getOrganizationTenantCollection<UserDocument>(
+    organizationId,
+    COLLECTIONS.USERS,
+    [
+    { key: { email: 1 }, unique: true },
+    { key: { organizationId: 1 } },
+    ],
+  );
+  return users.countDocuments();
 }

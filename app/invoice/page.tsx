@@ -1,19 +1,31 @@
-'use client';
+"use client";
 
-import React, { Suspense, useEffect, useState } from 'react';
-import { X } from 'lucide-react';
-import { Button } from '@/components/common/button';
-import { Input } from '@/components/common/input';
-import { toast } from 'sonner';
-import { useRouter, useSearchParams } from 'next/navigation';
-import PhoneInput from 'react-phone-number-input';
+import React, { Suspense, useEffect, useMemo, useState } from "react";
+import { X } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import PhoneInput from "react-phone-number-input";
+import { toast } from "sonner";
+import { Button } from "@/components/common/button";
+import { Input } from "@/components/common/input";
+
+const ORGANIZATION_PLAN_PRICES: Record<string, number> = {
+  Starter: 10000,
+  Basic: 10000,
+  Professional: 25000,
+  Enterprise: 50000,
+};
+
+function getPlanPrice(planName?: string | null) {
+  if (!planName) return null;
+  return ORGANIZATION_PLAN_PRICES[planName] ?? null;
+}
 
 function CreateInvoiceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const invoiceId = searchParams?.get('id');
-  const mode = searchParams?.get('mode');
-  const isView = mode === 'view';
+  const invoiceId = searchParams?.get("id");
+  const mode = searchParams?.get("mode");
+  const isView = mode === "view";
   const [invoiceNumber, setInvoiceNumber] = useState(
     () => `INV-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
   );
@@ -34,29 +46,17 @@ function CreateInvoiceContent() {
     name: string;
     planName?: string | null;
   }[]>([]);
-  const [selectedOrganizationId, setSelectedOrganizationId] = useState('');
-
-  const organizationPlanPrices: Record<string, number> = {
-    Starter: 10000,
-    Basic: 10000,
-    Professional: 25000,
-    Enterprise: 50000,
-  };
-
-  const getPlanPrice = (planName?: string | null) => {
-    if (!planName) return null;
-    return organizationPlanPrices[planName] ?? null;
-  };
+  const [selectedOrganizationIdState, setSelectedOrganizationIdState] = useState("");
 
   useEffect(() => {
     async function fetchOrganizations() {
       try {
-        const res = await fetch('/api/portal');
+        const res = await fetch("/api/portal");
         const data = await res.json();
         if (res.ok) {
           setOrganizations(data);
           if (data.length === 1) {
-            setSelectedOrganizationId(data[0].id);
+            setSelectedOrganizationIdState(data[0].id);
             setForm((prev) => ({
               ...prev,
               organizationName: data[0].name,
@@ -64,23 +64,28 @@ function CreateInvoiceContent() {
             }));
           }
         } else {
-          toast.error(data?.error || 'Unable to load organizations');
+          toast.error(data?.error || "Unable to load organizations");
         }
       } catch (err) {
         console.error(err);
-        toast.error('Unable to load organizations');
+        toast.error("Unable to load organizations");
       }
     }
 
     fetchOrganizations();
   }, []);
 
-  useEffect(() => {
-    if (!selectedOrganizationId && form.organizationName && organizations.length > 0) {
-      const match = organizations.find((org) => org.name === form.organizationName);
-      if (match) setSelectedOrganizationId(match.id);
+  const selectedOrganizationId = useMemo(() => {
+    if (organizations.length === 0) {
+      return "";
     }
-  }, [form.organizationName, organizations, selectedOrganizationId]);
+
+    if (selectedOrganizationIdState) {
+      return selectedOrganizationIdState;
+    }
+
+    return organizations.find((org) => org.name === form.organizationName)?.id ?? "";
+  }, [form.organizationName, organizations, selectedOrganizationIdState]);
 
   useEffect(() => {
     if (!invoiceId) return;
@@ -239,7 +244,7 @@ function CreateInvoiceContent() {
                   className={`${inputClassName} bg-white`}
                   onChange={(e) => {
                     const orgId = e.target.value;
-                    setSelectedOrganizationId(orgId);
+                    setSelectedOrganizationIdState(orgId);
                     const org = organizations.find((item) => item.id === orgId);
                     const planPrice = getPlanPrice(org?.planName);
                     setForm((prev) => ({

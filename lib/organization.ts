@@ -1,4 +1,4 @@
-import { backfillOrganizationSlugs } from "@/app/repositories/organization";
+export const SYSTEM_DOMAIN_SUFFIX = ".procorhrms.com";
 
 const moduleGroups = [
   { name: "Dashboard", modules: [] },
@@ -218,16 +218,35 @@ export function normalizeModuleAccessToObject(value: unknown): ModuleAccessObjec
   return moduleAccessObjectFromEnabledNames(new Set());
 }
 
-let backfillAttempted = false;
+function normalizeDomainValue(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/\.+$/, "");
+}
 
-export async function ensureOrganizationSlugs() {
-  if (backfillAttempted) return;
-  backfillAttempted = true;
+export function extractSystemDomainLabel(value: string) {
+  const normalizedValue = normalizeDomainValue(value);
+  if (!normalizedValue) return "";
 
-  try {
-    // Backfill legacy organizations that were created before slug was introduced.
-    await backfillOrganizationSlugs();
-  } catch {
-    // Ignore failures here; regular database queries will surface real errors.
-  }
+  const rawLabel = normalizedValue.endsWith(SYSTEM_DOMAIN_SUFFIX)
+    ? normalizedValue.slice(0, -SYSTEM_DOMAIN_SUFFIX.length)
+    : normalizedValue;
+
+  return rawLabel
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function buildSystemDomain(value: string) {
+  const label = extractSystemDomainLabel(value);
+  return label ? `${label}${SYSTEM_DOMAIN_SUFFIX}` : "";
+}
+
+export function normalizeCustomDomain(value: string | null | undefined) {
+  const normalizedValue = normalizeDomainValue(value ?? "");
+  return normalizedValue || null;
 }

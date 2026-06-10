@@ -1,5 +1,5 @@
 import { roles } from "@/lib/database/constants";
-import { listUsers } from "@/app/repositories/user";
+import { listTenantUsersByOrganizationId, listUsers } from "@/app/repositories/user";
 import { getSessionFromCookie } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -17,7 +17,13 @@ export async function GET(request: Request) {
       ? role
       : undefined;
 
-    return NextResponse.json(await listUsers({ organizationId, role: roleFilter }));
+    if (organizationId) {
+      return NextResponse.json(
+        await listTenantUsersByOrganizationId(organizationId, { role: roleFilter }),
+      );
+    }
+
+    return NextResponse.json(await listUsers({ role: roleFilter }));
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch users", details: String(error) },

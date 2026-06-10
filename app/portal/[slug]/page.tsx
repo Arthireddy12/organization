@@ -5,8 +5,8 @@ import {
 } from "@/app/repositories/organization";
 import { notFound, redirect } from "next/navigation";
 import OrganizationSettingsClient from "./OrganizationSettingsClient";
+import { ensureOrganizationSlugs } from "@/lib/organization-server";
 import {
-  ensureOrganizationSlugs,
   normalizeModuleAccessToArray,
 } from "@/lib/organization";
 

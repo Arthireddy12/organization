@@ -4,6 +4,7 @@ import type { EmployeeDocument } from "@/app/models/employee";
 import type { OrganizationDocument } from "@/app/models/organization";
 import type { TeamDocument } from "@/app/models/team";
 import type { UserDocument } from "@/app/models/user";
+import { countTenantUsersByOrganizationId } from "./user";
 import { toObjectId, toPlain } from "@/app/utils/helper";
 import type { Filter } from "mongodb";
 import type { OrganizationRecord } from "./types";
@@ -16,13 +17,13 @@ export async function listOrganizations() {
 }
 
 export async function listOrganizationsWithUserCounts() {
-  const users = await getCollection<UserDocument>(COLLECTIONS.USERS);
   const organizations = await listOrganizations();
   return Promise.all(organizations.map(async (organization) => {
-    const organizationId = toObjectId(organization.id);
     return {
       ...organization,
-      userCount: organizationId ? await users.countDocuments({ organizationId }) : 0,
+      userCount: organization.tenantDatabase
+        ? await countTenantUsersByOrganizationId(organization.id)
+        : 0,
     };
   }));
 }
@@ -39,12 +40,34 @@ export async function findOrganizationBySlug(slug: string) {
   return toPlain(await organizations.findOne({ slug })) as OrganizationRecord | null;
 }
 
-export async function findOrganizationByAny(filters: Record<string, unknown>[]) {
+export async function findOrganizationByAny(
+  filters: Record<string, unknown>[],
+  excludeId?: string,
+) {
   const organizations = await getCollection<OrganizationDocument>(COLLECTIONS.ORGANIZATIONS);
-  return organizations.findOne(
-    { $or: filters as Filter<OrganizationDocument>[] },
-    { projection: { _id: 1 } },
-  );
+  const excludedObjectId = excludeId ? toObjectId(excludeId) : null;
+
+  return toPlain(
+    await organizations.findOne(
+      {
+        $and: [
+          { $or: filters as Filter<OrganizationDocument>[] },
+          ...(excludedObjectId ? [{ _id: { $ne: excludedObjectId } }] : []),
+        ],
+      },
+      {
+        projection: {
+          _id: 1,
+          name: 1,
+          email: 1,
+          adminEmail: 1,
+          slug: 1,
+          systemDomain: 1,
+          customDomain: 1,
+        },
+      },
+    ),
+  ) as OrganizationRecord | null;
 }
 
 export async function organizationExistsById(id: string) {

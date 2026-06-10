@@ -1,10 +1,10 @@
 import { listInvoices } from "@/app/repositories/invoice";
 import { listOrganizationsWithUserCounts } from "@/app/repositories/organization";
 import { getSessionFromCookie } from "@/lib/auth";
+import { ensureOrganizationSlugs } from "@/lib/organization-server";
 import PortalClient, { type InvoicePortalApi, type OrganizationPortalApi } from "./PortalClient";
 import { redirect } from "next/navigation";
 import {
-  ensureOrganizationSlugs,
   normalizeModuleAccessToArray,
 } from "@/lib/organization";
 

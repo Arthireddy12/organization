@@ -1,618 +1,247 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
-import { 
-  Building2, 
-  User, 
-  ChevronDown, 
-  ChevronRight,
-  LayoutGrid,
-  CheckCircle2,
-  AlertCircle,
-  X,
-} from "lucide-react";
-
-const moduleGroups = [
-  { name: "Dashboard", modules: [] },
-  {
-    name: "Payroll Module",
-    modules: ["Payroll Policy Engine", "Payroll Generation"],
-  },
-  { name: "Settings", modules: [] },
-  { name: "Support", modules: ["Helpdesk", "Performance & Goals"] },
-  {
-    name: "Recruitment Module",
-    modules: ["Candidates", "Recruitment / Jobs"],
-  },
-  {
-    name: "Attendance Module",
-    modules: ["Attendance", "Analytics"],
-  },
-  {
-    name: "Leave Module",
-    modules: [
-      "Leave Policy Control",
-      "Policies",
-      "Leaves",
-      "Comp Off Requests",
-      "Auto Escalation",
-      "Backup Approver",
-      "Delegation",
-      "Holidays",
-    ],
-  },
-  {
-    name: "People Module",
-    modules: [
-      "All Employees",
-      "Onboarding",
-      "Letters",
-      "Documents",
-      "Shifts",
-      "All Departments",
-      "Org Chart",
-      "Directory",
-    ],
-  },
-] as const;
-
-const moduleOptions = moduleGroups.flatMap((group) => [group.name, ...group.modules]);
-
-type ToastState = {
-  type: "success" | "error";
-  message: string;
-} | null;
-
-type FormMode = "create" | "view" | "edit";
-
-export type InitialOrganizationFormData = {
-  id: string;
-  organizationName: string;
-  organizationEmail: string;
-  phoneNumber: string;
-  industry: string;
-  address: string;
-  superAdminName: string;
-  superAdminEmail: string;
-  adminPhone: string;
-  designation: string;
-  startDate: string | null;
-  autoDeactivateDate: string | null;
-  isActive: boolean;
-  userLimit: number;
-  moduleAccess: string[];
-};
+import { Button } from "@/components/common/button";
+import CreateOrganizationToast from "./components/CreateOrganizationToast";
+import PortalProvisionPanel from "./components/PortalProvisionPanel";
+import SetupStepper from "./components/SetupStepper";
+import GroupDefinitionStep from "./components/steps/GroupDefinitionStep";
+import CompanyDetailsStep from "./components/steps/CompanyDetailsStep";
+import OrgLevelsAndAttributesStep from "./components/steps/OrgLevelsAndAttributesStep";
+import PacketsDefinitionStep from "./components/steps/PacketsDefinitionStep";
+import RolesDefinitionStep from "./components/steps/RolesDefinitionStep";
+import type { FormMode, InitialOrganizationFormData } from "./components/types";
+import { useCreateOrganizationForm } from "./components/useCreateOrganizationForm";
 
 type CreateOrganizationFormProps = {
   mode: FormMode;
   initialOrganization?: InitialOrganizationFormData;
+  initialStep?: 1 | 2 | 3 | 4 | 5;
 };
+
+function getCurrentStepErrorMessage(
+  step: 1 | 2 | 3 | 4 | 5,
+  errors: Record<string, string>,
+) {
+  if (errors.form) {
+    return errors.form;
+  }
+
+  if (step === 2) {
+    return errors.selectedIds;
+  }
+
+  if (step === 4) {
+    return Object.entries(errors).find(([key]) => key.startsWith("packet:"))?.[1];
+  }
+
+  if (step === 5) {
+    return Object.entries(errors).find(([key]) => key.startsWith("group:"))?.[1];
+  }
+
+  return null;
+}
 
 export default function CreateOrganizationForm({
   mode,
   initialOrganization,
+  initialStep,
 }: CreateOrganizationFormProps) {
-  const router = useRouter();
-  const todayDate = getTodayDateInputValue();
-  const isViewMode = mode === "view";
-  const isEditMode = mode === "edit";
-  const [organizationName, setOrganizationName] = useState(initialOrganization?.organizationName ?? "");
-  const [organizationEmail, setOrganizationEmail] = useState(initialOrganization?.organizationEmail ?? "");
-  const [phoneNumber, setPhoneNumber] = useState(initialOrganization?.phoneNumber ?? "");
-  const [industry, setIndustry] = useState(initialOrganization?.industry ?? "");
-  const [address, setAddress] = useState(initialOrganization?.address ?? "");
-  const [autoDeactivateDate, setAutoDeactivateDate] = useState(toDateInputValue(initialOrganization?.autoDeactivateDate));
-  
-  const [superAdminName, setSuperAdminName] = useState(initialOrganization?.superAdminName ?? "");
-  const [superAdminEmail, setSuperAdminEmail] = useState(initialOrganization?.superAdminEmail ?? "");
-  const [superAdminPassword, setSuperAdminPassword] = useState("");
-  const [adminPhone, setAdminPhone] = useState(initialOrganization?.adminPhone ?? "");
-  const [designation, setDesignation] = useState(initialOrganization?.designation ?? "");
-  
-  const [modulePermissions, setModulePermissions] = useState<Record<string, boolean>>(
-    () => {
-      const initialModules = new Set(initialOrganization?.moduleAccess ?? []);
-      return Object.fromEntries(moduleOptions.map((module) => [module, initialModules.has(module)]));
-    },
+  const form = useCreateOrganizationForm({ mode, initialOrganization, initialStep });
+  const isFirstStep = form.activeStep === 1;
+  const isLastStep = form.activeStep === 5;
+  const currentStepErrorMessage = getCurrentStepErrorMessage(
+    form.activeStep,
+    form.fieldErrors,
   );
-  const [openModuleGroups, setOpenModuleGroups] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(moduleGroups.map((group) => [group.name, group.name === "Dashboard"])),
-  );
-  const [creating, setCreating] = useState(false);
-  const [toast, setToast] = useState<ToastState>(null);
-  const pageTitle =
-    mode === "view" ? "Organization Details" : mode === "edit" ? "Edit Organization" : "Add Organization";
-  const cardDescription =
-    mode === "view"
-      ? "Review the saved organization details"
-      : mode === "edit"
-        ? "Update the saved organization details"
-        : "Enter the basic details of the organization";
-
-  const groupedModuleAccess = {
-    groups: moduleGroups.map((group) => ({
-      name: group.name,
-      enabled: modulePermissions[group.name] === true,
-      modules: group.modules.map((moduleName) => ({
-        name: moduleName,
-        enabled: modulePermissions[moduleName] === true,
-      })),
-    })),
-  };
-
-  function toggleModuleGroup(groupName: string, childModules: readonly string[]) {
-    setModulePermissions((current) => {
-      const groupSelected =
-        current[groupName] && childModules.every((moduleName) => current[moduleName]);
-      const nextSelected = !groupSelected;
-
-      return {
-        ...current,
-        [groupName]: nextSelected,
-        ...Object.fromEntries(childModules.map((moduleName) => [moduleName, nextSelected])),
-      };
-    });
-
-    if (childModules.length > 0) {
-      setOpenModuleGroups((current) => ({
-        ...current,
-        [groupName]: true,
-      }));
-    }
-  }
-
-  function toggleSubModule(groupName: string, childModules: readonly string[], moduleName: string) {
-    setModulePermissions((current) => {
-      const next = {
-        ...current,
-        [moduleName]: !current[moduleName],
-      };
-      next[groupName] = childModules.some((childModule) => next[childModule]);
-      return next;
-    });
-  }
-
-  function toggleModuleGroupOpen(groupName: string) {
-    setOpenModuleGroups((current) => ({
-      ...current,
-      [groupName]: !current[groupName],
-    }));
-  }
-
-  function showToast(nextToast: Exclude<ToastState, null>) {
-    setToast(nextToast);
-    window.setTimeout(() => {
-      setToast((current) => (current === nextToast ? null : current));
-    }, 3500);
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isViewMode) return;
-    if (autoDeactivateDate && autoDeactivateDate < todayDate) {
-      showToast({
-        type: "error",
-        message: "Subscription end date cannot be before today.",
-      });
-      return;
-    }
-
-    setCreating(true);
-    setToast(null);
-
-    try {
-      const response = await fetch(isEditMode ? `/api/portal/${initialOrganization?.id}` : "/api/portal", {
-        method: isEditMode ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          organizationName,
-          organizationEmail,
-          phoneNumber,
-          industry,
-          address,
-          adminPhone,
-          designation,
-          ...(isEditMode
-            ? { adminName: superAdminName, adminEmail: superAdminEmail }
-            : { superAdminName, superAdminEmail }),
-          ...(!isEditMode ? { superAdminPassword } : {}),
-          autoDeactivateDate,
-          moduleAccess: groupedModuleAccess,
-        }),
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error || payload.details || "Failed to create organization");
-      }
-
-      showToast({
-        type: "success",
-        message: isEditMode ? "Organization updated successfully." : "Organization created successfully.",
-      });
-      if (isEditMode) {
-        router.refresh();
-        return;
-      }
-      setOrganizationName("");
-      setOrganizationEmail("");
-      setPhoneNumber("");
-      setIndustry("");
-      setAddress("");
-      setAutoDeactivateDate("");
-      setSuperAdminName("");
-      setSuperAdminEmail("");
-      setSuperAdminPassword("");
-      setAdminPhone("");
-      setDesignation("");
-      setModulePermissions(Object.fromEntries(moduleOptions.map((module) => [module, false])));
-    } catch (error) {
-      showToast({
-        type: "error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-    } finally {
-      setCreating(false);
-    }
-  }
 
   return (
-    <div className="min-h-screen py-10 px-6 font-sans">
-      <CustomToast toast={toast} onClose={() => setToast(null)} />
-      <div className="max-w-5xl mx-auto">
-        
-        {/* Breadcrumbs & Title */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">{pageTitle}</h1>
-          <div className="flex items-center gap-2 text-sm mt-1">
-            <span className="text-slate-500">Organizations</span>
-            <span className="text-slate-400 text-xs">/</span>
-            <span className="text-slate-500">{pageTitle}</span>
-          </div>
+    <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6">
+      <CreateOrganizationToast toast={form.toast} onClose={() => form.setToast(null)} />
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6">
+          <h1 className="text-[22px] font-bold text-slate-700">One Time Setup</h1>
         </div>
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          {/* 1. Organization Details Card */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
-            <div className="flex items-start gap-4 mb-8">
-              <div className="bg-blue-50 p-3 rounded-xl">
-                <Building2 className="text-blue-600 w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-slate-900">Organization Details</h3>
-                <p className="text-sm text-slate-500">{cardDescription}</p>
-              </div>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void form.handleFinalSubmit();
+          }}
+          className="space-y-4"
+        >
+          <SetupStepper
+            activeStep={form.activeStep}
+            completedSteps={form.completedSteps}
+            onStepChange={form.setActiveStep}
+          />
+
+          {currentStepErrorMessage ? (
+            <div className="rounded-sm border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+              {currentStepErrorMessage}
             </div>
+          ) : null}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-              <Field label="Organization Name" required>
-                <input className={inputStyle} placeholder="Enter organization name" value={organizationName} onChange={e => setOrganizationName(e.target.value)} readOnly={isViewMode} required />
-              </Field>
-              
-              <Field label="Organization Email" required>
-                <input className={inputStyle} type="email" placeholder="Enter organization email" value={organizationEmail} onChange={e => setOrganizationEmail(e.target.value)} readOnly={isViewMode} required />
-              </Field>
+          {form.activeStep === 1 ? (
+            <>
+              <CompanyDetailsStep
+                mode={mode}
+                organizationName={form.organizationName}
+                industry={form.industry}
+                setupProfile={form.setupProfile}
+                errors={form.fieldErrors}
+                onOrganizationNameChange={form.setOrganizationName}
+                onIndustryChange={form.setIndustry}
+                onSetupProfileChange={form.updateSetupProfile}
+                onAddBranchOffice={form.addBranchOffice}
+                onRemoveBranchOffice={form.removeBranchOffice}
+              />
 
-              <Field label="Phone Number" required>
-                <div className="flex group">
-                  <div className="flex items-center gap-2 border border-r-0 border-slate-200 rounded-l-lg px-3 bg-slate-50 text-sm cursor-pointer hover:bg-slate-100 transition-colors">
-                    <span className="text-lg">🇮🇳</span> <span className="font-medium text-slate-700">+91</span> <ChevronDown size={14} className="text-slate-400"/>
-                  </div>
-                  <input className={`${inputStyle} rounded-l-none`} placeholder="Enter phone number" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} readOnly={isViewMode} required />
-                </div>
-              </Field>
+              <PortalProvisionPanel
+                mode={mode}
+                domainType={form.domainType}
+                organizationEmail={form.organizationEmail}
+                phoneNumber={form.phoneNumber}
+                systemDomainName={form.systemDomainName}
+                customDomain={form.customDomain}
+                startDateLabel={form.startDateLabel}
+                autoDeactivateDate={form.autoDeactivateDate}
+                superAdminName={form.superAdminName}
+                superAdminEmail={form.superAdminEmail}
+                superAdminPassword={form.superAdminPassword}
+                adminPhone={form.adminPhone}
+                designation={form.designation}
+                onDomainTypeChange={form.setDomainType}
+                onOrganizationEmailChange={form.setOrganizationEmail}
+                onPhoneNumberChange={form.setPhoneNumber}
+                onSystemDomainNameChange={form.setSystemDomainName}
+                onCustomDomainChange={form.setCustomDomain}
+                onAutoDeactivateDateChange={form.setAutoDeactivateDate}
+                onSuperAdminNameChange={form.setSuperAdminName}
+                onSuperAdminEmailChange={form.setSuperAdminEmail}
+                onSuperAdminPasswordChange={form.setSuperAdminPassword}
+                onAdminPhoneChange={form.setAdminPhone}
+                onDesignationChange={form.setDesignation}
+                errors={form.fieldErrors}
+              />
+            </>
+          ) : form.activeStep === 2 ? (
+            <OrgLevelsAndAttributesStep
+              mode={mode}
+              attributeSetup={form.attributeSetup}
+              selectedAttributes={form.selectedAttributes}
+              onAddAvailableAttribute={form.addAvailableAttribute}
+              onEnsureSelectedAttribute={form.ensureSelectedAttribute}
+              onGetAttributeUnits={form.getAttributeUnits}
+              onSaveAttributeUnit={form.saveAttributeUnit}
+              onDeleteAttributeUnit={form.deleteAttributeUnit}
+              onRemoveSelectedAttribute={form.removeSelectedAttribute}
+              onReorderSelectedAttribute={form.reorderSelectedAttribute}
+            />
+          ) : form.activeStep === 3 ? (
+            <RolesDefinitionStep
+              mode={mode}
+              organizationId={form.organizationId}
+              modulePermissions={form.modulePermissions}
+              openModuleGroups={form.openModuleGroups}
+              superAdminName={form.superAdminName}
+              superAdminEmail={form.superAdminEmail}
+              onToggleModuleGroup={form.toggleModuleGroup}
+              onToggleSubModule={form.toggleSubModule}
+              onToggleModuleGroupOpen={form.toggleModuleGroupOpen}
+              getSubjectModuleAccess={form.getSubjectModuleAccess}
+              onSubjectModuleAccessChange={form.setSubjectModuleAccess}
+            />
+          ) : form.activeStep === 4 ? (
+            <PacketsDefinitionStep
+              mode={mode}
+              selectedAttributes={form.selectedAttributes}
+              onGetPacketAssignments={form.getPacketAssignments}
+              onSavePacketAssignment={form.savePacketAssignment}
+              onDeletePacketAssignment={form.deletePacketAssignment}
+            />
+          ) : (
+            <GroupDefinitionStep
+              mode={mode}
+              selectedAttributes={form.selectedAttributes}
+              onGetGroupDefinitionRules={form.getGroupDefinitionRules}
+              onSaveGroupDefinitionRule={form.saveGroupDefinitionRule}
+              onDeleteGroupDefinitionRule={form.deleteGroupDefinitionRule}
+            />
+          )}
 
-              <Field label="Industry" required>
-                <div className="relative">
-                  <select className={`${inputStyle} appearance-none pr-10`} value={industry} onChange={e => setIndustry(e.target.value)} disabled={isViewMode} required>
-                    <option value="">Select industry</option>
-                    <option value="it">Information Technology</option>
-                    <option value="finance">Finance</option>
-                    <option value="healthcare">Healthcare</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18}/>
-                </div>
-              </Field>
+          {form.isViewMode ? (
+            <div className="flex flex-col-reverse gap-3 rounded-sm border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:justify-end">
+              <Link
+                href="/portal/organizations"
+                className="inline-flex items-center justify-center rounded-sm border border-slate-300 px-6 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Back
+              </Link>
 
-              <div className="md:col-span-2">
-                <Field label="Address" required>
-                  <textarea 
-                    className={`${inputStyle} min-h-[100px] py-3 resize-none`} 
-                    placeholder="Enter complete address"
-                    value={address}
-                    onChange={e => setAddress(e.target.value)}
-                    readOnly={isViewMode}
-                    required
-                  />
-                </Field>
-              </div>
-
-              <Field label="Subscription Start Date">
-                <input className={`${inputStyle} bg-slate-50 text-slate-500`} value={initialOrganization?.startDate ? formatDate(initialOrganization.startDate) : "Today"} disabled />
-              </Field>
-
-              <Field label="Subscription End Date" required>
-                <input
-                  className={inputStyle}
-                  type="date"
-                  min={todayDate}
-                  value={autoDeactivateDate}
-                  onChange={(e) => setAutoDeactivateDate(e.target.value)}
-                  readOnly={isViewMode}
-                  required
-                />
-              </Field>
-            </div>
-          </div>
-
-          {/* 2. Admin Details Card */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
-            <div className="flex items-start gap-4 mb-8">
-              <div className="bg-blue-50 p-3 rounded-xl">
-                <User className="text-blue-600 w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-slate-900">Admin Details</h3>
-                <p className="text-sm text-slate-500">Enter the primary administrator details</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-              <Field label="Admin Name" required>
-                <input className={inputStyle} placeholder="Enter admin full name" value={superAdminName} onChange={e => setSuperAdminName(e.target.value)} readOnly={isViewMode} required />
-              </Field>
-              
-              <Field label="Admin Email" required>
-                <input className={inputStyle} type="email" placeholder="Enter admin email" value={superAdminEmail} onChange={e => setSuperAdminEmail(e.target.value)} readOnly={isViewMode} required />
-              </Field>
-
-              <Field label="Admin Phone Number" required>
-                <div className="flex">
-                  <div className="flex items-center gap-2 border border-r-0 border-slate-200 rounded-l-lg px-3 bg-slate-50 text-sm cursor-pointer">
-                    <span className="text-lg">🇮🇳</span> <span className="font-medium text-slate-700">+91</span> <ChevronDown size={14} className="text-slate-400"/>
-                  </div>
-                  <input className={`${inputStyle} rounded-l-none`} placeholder="Enter admin phone number" value={adminPhone} onChange={e => setAdminPhone(e.target.value)} readOnly={isViewMode} required />
-                </div>
-              </Field>
-
-              <Field label="Designation" required>
-                <input className={inputStyle} placeholder="Enter designation" value={designation} onChange={e => setDesignation(e.target.value)} readOnly={isViewMode} required />
-              </Field>
-
-              {!isEditMode && !isViewMode ? (
-                <Field label="Admin Password" required>
-                  <input
-                    className={inputStyle}
-                    type="password"
-                    placeholder="Enter admin password"
-                    value={superAdminPassword}
-                    onChange={(e) => setSuperAdminPassword(e.target.value)}
-                    required
-                  />
-                </Field>
+              {initialOrganization ? (
+                <Link
+                  href={`/portal/create?id=${initialOrganization.id}&mode=edit`}
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-500"
+                >
+                  Edit Organization
+                </Link>
               ) : null}
             </div>
-          </div>
-
-          {/* 3. Modules Section */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
-            <div className="flex items-start gap-4 mb-8">
-              <div className="bg-blue-50 p-3 rounded-xl">
-                <LayoutGrid className="text-blue-600 w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-slate-900">Module Access</h3>
-                <p className="text-sm text-slate-500">Select the modules accessible to this organization</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {moduleGroups.map((group, index) => {
-                const checked =
-                  modulePermissions[group.name] &&
-                  group.modules.every((moduleName) => modulePermissions[moduleName]);
-                const partiallyChecked =
-                  group.modules.length > 0 &&
-                  group.modules.some((moduleName) => modulePermissions[moduleName]) &&
-                  !checked;
-                const expanded = openModuleGroups[group.name];
-
-                return (
-                  <div key={group.name} className="rounded-xl border border-slate-200 bg-white">
-                    <div className="flex min-h-14 items-center gap-3 px-4 py-3">
-                      <span className="w-6 text-sm font-bold text-slate-400">{index + 1}.</span>
-                      <button
-                        type="button"
-                        onClick={() => toggleModuleGroupOpen(group.name)}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:cursor-default disabled:hover:bg-transparent"
-                        disabled={group.modules.length === 0}
-                        aria-label={`${expanded ? "Collapse" : "Expand"} ${group.name}`}
-                      >
-                        {group.modules.length > 0 ? (
-                          expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />
-                        ) : (
-                          <span className="h-2 w-2 rounded-full bg-slate-300" />
-                        )}
-                      </button>
-                      <label className="flex flex-1 cursor-pointer items-center justify-between gap-4">
-                        <span>
-                          <span className="block text-sm font-bold text-slate-800">{group.name}</span>
-                          {group.modules.length > 0 ? (
-                            <span className="mt-0.5 block text-xs text-slate-500">
-                              {group.modules.length} submodules
-                            </span>
-                          ) : null}
-                        </span>
-                        <span className="flex items-center gap-3">
-                          {partiallyChecked ? (
-                            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
-                              Partial
-                            </span>
-                          ) : null}
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleModuleGroup(group.name, group.modules)}
-                            disabled={isViewMode}
-                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 transition-all"
-                          />
-                        </span>
-                      </label>
-                    </div>
-
-                    {expanded && group.modules.length > 0 ? (
-                      <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          {group.modules.map((moduleName, childIndex) => {
-                            const childChecked = modulePermissions[moduleName];
-                            return (
-                              <label
-                                key={moduleName}
-                                className={`flex min-h-11 cursor-pointer items-center justify-between rounded-lg border px-4 py-2.5 transition-all duration-200 ${
-                                  childChecked
-                                    ? "border-blue-500 bg-white text-blue-700 ring-1 ring-blue-500"
-                                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                                }`}
-                              >
-                                <span className="flex items-center gap-2 text-sm font-semibold">
-                                  <span className="text-xs font-bold text-slate-400">
-                                    {String.fromCharCode(65 + childIndex)}.
-                                  </span>
-                                  {moduleName}
-                                </span>
-                                <input
-                                  type="checkbox"
-                                  checked={childChecked}
-                                  onChange={() => toggleSubModule(group.name, group.modules, moduleName)}
-                                  disabled={isViewMode}
-                                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 transition-all"
-                                />
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Form Actions */}
-          <div className="flex justify-end items-center gap-4 pt-6">
-            <Link
-              href="/portal/organizations"
-              className="px-10 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all text-sm"
-            >
-              {isViewMode ? "Back" : "Cancel"}
-            </Link>
-            {isViewMode && initialOrganization ? (
+          ) : (
+            <div className="flex flex-col-reverse gap-3 rounded-sm border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:justify-between">
               <Link
-                href={`/portal/create?id=${initialOrganization.id}&mode=edit`}
-                className="px-10 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-100 text-sm"
+                href="/portal/organizations"
+                className="inline-flex items-center justify-center rounded-sm border border-slate-300 px-6 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
-                Edit Organization
+                Cancel
               </Link>
-            ) : (
-              <button 
-                type="submit" 
-                disabled={creating}
-                className="px-10 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-100 text-sm disabled:opacity-70"
-              >
-                {creating ? (isEditMode ? "Saving..." : "Creating...") : isEditMode ? "Save Changes" : "Create Organization"}
-              </button>
-            )}
-          </div>
 
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                {!isFirstStep ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="rounded-sm px-6"
+                    onClick={() =>
+                      form.setActiveStep((form.activeStep - 1) as 1 | 2 | 3 | 4 | 5)
+                    }
+                  >
+                    Previous
+                  </Button>
+                ) : null}
+
+                {!isLastStep ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="rounded-sm px-6"
+                    onClick={() => void form.handleNextStep()}
+                    disabled={form.creating}
+                  >
+                    {form.creating ? "Saving..." : "Next"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="rounded-sm px-6"
+                    disabled={form.creating}
+                  >
+                    {form.creating
+                      ? form.isEditMode
+                        ? "Saving..."
+                        : "Creating..."
+                      : form.isEditMode
+                        ? "Save Changes"
+                        : "Create Organization"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </form>
       </div>
     </div>
   );
-}
-
-function CustomToast({
-  toast,
-  onClose,
-}: {
-  toast: ToastState;
-  onClose: () => void;
-}) {
-  if (!toast) return null;
-
-  const success = toast.type === "success";
-  const Icon = success ? CheckCircle2 : AlertCircle;
-
-  return (
-    <div className="fixed right-6 top-6 z-50 w-[min(360px,calc(100vw-48px))]">
-      <div
-        className={`flex items-start gap-3 rounded-xl border bg-white px-4 py-3 shadow-xl shadow-slate-200/70 ${
-          success ? "border-emerald-200" : "border-rose-200"
-        }`}
-      >
-        <span
-          className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-            success ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-          }`}
-        >
-          <Icon size={18} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-slate-950">
-            {success ? "Success" : "Unable to create organization"}
-          </p>
-          <p className="mt-0.5 text-sm leading-5 text-slate-600">{toast.message}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-          aria-label="Close notification"
-        >
-          <X size={16} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** Helper Component for Input Fields **/
-function Field({ label, children, required }: { label: string, children: React.ReactNode, required?: boolean }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <label className="text-[13px] font-bold text-slate-700 tracking-tight">
-        {label} {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-/** Base styles for inputs **/
-const inputStyle = `
-  w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 
-  placeholder:text-slate-400 outline-none transition-all duration-200
-  focus:ring-0 focus:border-slate-200
-`;
-
-function getTodayDateInputValue() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function toDateInputValue(value?: string | null) {
-  return value ? value.slice(0, 10) : "";
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(value));
 }

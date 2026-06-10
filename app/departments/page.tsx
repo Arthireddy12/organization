@@ -53,7 +53,7 @@ export default async function DepartmentsPage() {
                       {department.organization?.name ?? "—"}
                     </td>
                     <td className="px-5 py-4 tabular-nums text-slate-700 dark:text-slate-300">
-                      {department.designations.length}
+                      {department.designations?.length ?? 0}
                     </td>
                   </tr>
                 ))
