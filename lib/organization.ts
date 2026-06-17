@@ -7,6 +7,7 @@ const moduleGroups = [
     modules: ["Payroll Policy Engine", "Payroll Generation"],
   },
   { name: "Settings", modules: [] },
+  { name: "Permissions", modules: [] },
   { name: "Support", modules: ["Helpdesk", "Performance & Goals"] },
   {
     name: "Recruitment Module",
@@ -22,6 +23,7 @@ const moduleGroups = [
       "Leave Policy Control",
       "Policies",
       "Leaves",
+      "Resignations",
       "Comp Off Requests",
       "Auto Escalation",
       "Backup Approver",
