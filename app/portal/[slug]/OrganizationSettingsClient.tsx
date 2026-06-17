@@ -31,6 +31,7 @@ const moduleOptions = [
   "Leave",
   "Payroll",
   "Recruitment",
+  "Permissions",
   "Performance & Goals",
   "Helpdesk",
   "Shift",
