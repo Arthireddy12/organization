@@ -46,13 +46,26 @@ export const financialYearMonths = [
 
 export const moduleGroups = [
   { name: "Dashboard", modules: [] },
+  { name: "Reimbursements", modules: [] },
   {
-    name: "Payroll Module",
-    modules: ["Payroll Policy Engine", "Payroll Generation"],
+    name: "Settings",
+    modules: [
+      "Master Reports",
+      "Role Management",
+      "Settings",
+      "Permissions",
+      "Shifts",
+    ],
   },
-  { name: "Settings", modules: [] },
-  { name: "Permissions", modules: [] },
-  { name: "Support", modules: ["Helpdesk", "Performance & Goals"] },
+  {
+    name: "Communications",
+    modules: ["Announcements"],
+  },
+  {
+    name: "Goal Management",
+    modules: ["Project Creation", "Project Reviews"],
+  },
+  { name: "Support", modules: ["Helpdesk", "Faq"] },
   {
     name: "Recruitment Module",
     modules: ["Candidates", "Recruitment / Jobs"],
@@ -67,7 +80,7 @@ export const moduleGroups = [
       "Leave Policy Control",
       "Policies",
       "Leaves",
-      "Resignations",
+      "Add Resignation",
       "Comp Off Requests",
       "Auto Escalation",
       "Backup Approver",
@@ -76,16 +89,16 @@ export const moduleGroups = [
     ],
   },
   {
-    name: "People Module",
+    name: "Core Hrms",
     modules: [
       "All Employees",
       "Onboarding",
       "Letters",
-      "Documents",
-      "Shifts",
+      "All Documents",
       "All Departments",
       "Org Chart",
       "Directory",
+      "Resignation"
     ],
   },
 ] as const;
