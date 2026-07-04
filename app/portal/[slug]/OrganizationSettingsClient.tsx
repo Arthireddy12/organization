@@ -11,6 +11,7 @@ import {
   primaryButtonClass,
   successBoxClass,
 } from "@/lib/form-styles";
+import { moduleOptions as supportedModuleOptions } from "@/lib/organization";
 
 
 type OrganizationSettingsProps = {
@@ -26,16 +27,7 @@ type OrganizationSettingsProps = {
   initialAutoDeactivateDate: string | null;
 };
 
-const moduleOptions = [
-  "Attendance",
-  "Leave",
-  "Payroll",
-  "Recruitment",
-  "Permissions",
-  "Performance & Goals",
-  "Helpdesk",
-  "Shift",
-] as const;
+const moduleOptions = supportedModuleOptions;
 
 const MODULES_PER_ROW = 4;
 
@@ -206,7 +198,7 @@ export default function OrganizationSettingsClient({
                   onClick={() => promptModuleToggle(moduleName)}
                   className={`flex flex-col items-start rounded-2xl border p-4 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50 ${
                     enabled
-                      ? "border-teal-500/50 bg-gradient-to-br from-teal-500/10 to-emerald-600/5 ring-1 ring-teal-500/20 dark:from-teal-950/40 dark:to-emerald-950/20 dark:border-teal-600/40"
+                      ? "border-teal-500/50 bg-linear-to-br from-teal-500/10 to-emerald-600/5 ring-1 ring-teal-500/20 dark:from-teal-950/40 dark:to-emerald-950/20 dark:border-teal-600/40"
                       : "border-slate-200/90 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-slate-600"
                   }`}
                 >
