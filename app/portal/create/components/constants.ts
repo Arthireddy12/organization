@@ -51,7 +51,7 @@ export const moduleGroups = [
     name: "Settings",
     modules: [
       "Master Reports",
-      "Role Management",
+      "Access Control",
       "Settings",
       "Permissions",
       "Shifts",
@@ -101,7 +101,16 @@ export const moduleGroups = [
       "Resignation"
     ],
   },
+  {
+    name: "Financial Module",
+    modules: ["Flexi Benefit", "Flexi Policy Admin", "Investments"],
+  },
+  {
+    name: "Payroll Module",
+    modules: ["My pay", "Ctc Builder"],
+  },
 ] as const;
+
 
 export const moduleOptions = moduleGroups.flatMap((group) => [
   group.name,
