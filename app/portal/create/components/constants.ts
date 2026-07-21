@@ -98,7 +98,9 @@ export const moduleGroups = [
       "All Departments",
       "Org Chart",
       "Directory",
-      "Resignation"
+      "Resignation",
+      "Company Information",
+      "Management"
     ],
   },
   {
